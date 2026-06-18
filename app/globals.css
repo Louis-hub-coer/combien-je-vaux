@@ -1,0 +1,228 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply text-ink font-sans antialiased;
+    background: #f3f6fb;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+    line-height: 1.06;
+  }
+  ::selection {
+    background: #00c38933;
+  }
+}
+
+@layer components {
+  /* Dégradé profond du bloc bilan */
+  .bilan-aurora {
+    background: linear-gradient(135deg, #00c389 0%, #0b7e8c 60%, #5b2bd6 120%);
+  }
+  /* Fond sombre de la newsletter */
+  .news-aurora {
+    background: linear-gradient(135deg, #0b1020, #171f3d);
+  }
+
+  /* ---------- fond immersif (BackgroundFX) ---------- */
+  .bgfx {
+    background: linear-gradient(180deg, #fbfdff 0%, #f2f7fc 60%, #fbfdff 100%);
+  }
+  .bgfx-halo {
+    background: radial-gradient(closest-side, rgba(0, 195, 137, 0.22), rgba(0, 195, 137, 0) 70%);
+  }
+  .bgfx-grid {
+    background-image: radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+  }
+
+  /* ---------- mot animé (AnimatedWord) ---------- */
+  .rot {
+    position: relative;
+    display: inline-block;
+    vertical-align: bottom;
+    text-align: left;
+  }
+  .rot .sizer {
+    visibility: hidden;
+    font-weight: 700;
+  }
+  .rot .w {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-weight: 700;
+    opacity: 0;
+    white-space: nowrap;
+  }
+}
+
+/* ---------- animations ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: cjv-reveal 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: var(--d, 0s);
+  }
+  .float {
+    animation: cjv-float var(--fd, 7s) ease-in-out infinite;
+    animation-delay: var(--fdelay, 0s);
+  }
+  .rot .w {
+    animation: cjv-wordfade 9.2s infinite;
+  }
+  .rot .w:nth-child(2) {
+    animation-delay: 0s;
+  }
+  .rot .w:nth-child(3) {
+    animation-delay: 2.3s;
+  }
+  .rot .w:nth-child(4) {
+    animation-delay: 4.6s;
+  }
+  .rot .w:nth-child(5) {
+    animation-delay: 6.9s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rot .w:nth-child(2) {
+    opacity: 1;
+  }
+}
+
+@keyframes cjv-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes cjv-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+@keyframes cjv-wordfade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  3% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  21% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  25% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* ---------- reveal au scroll (composant Reveal, robuste sans JS) ---------- */
+.reveal-armed {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.reveal-armed.reveal-in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Curseur clignotant de la barre de recherche (effet machine à écrire) */
+.cjv-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  margin-left: 2px;
+  background: #00c389;
+  flex: none;
+}
+@keyframes cjv-blink {
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cjv-caret { animation: cjv-blink 1s step-end infinite; }
+}
+
+/* Badge fintech (dégradé violet→corail, pulsation + brillance) */
+.kick-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 8px 16px 8px 13px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(100deg, #7c5cfc, #fb6f70);
+  box-shadow: 0 10px 24px -10px rgba(124, 92, 252, .6);
+}
+.kick-pill:hover { box-shadow: 0 14px 30px -10px rgba(251, 111, 112, .6); }
+.kick-pill .pulse { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #fff; }
+.kick-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, .5) 50%, transparent 100%);
+  transform: translateX(-130%);
+}
+@keyframes cjv-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .55); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+@keyframes cjv-shine {
+  0%, 55% { transform: translateX(-130%); }
+  80%, 100% { transform: translateX(130%); }
+}
+
+/* Mot fort du titre — dégradé corail→violet + halo lumineux (sur fond sombre) */
+.hl {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  background: linear-gradient(100deg, #ff4d67 6%, #7c3aed 94%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hl::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -7%;
+  right: -7%;
+  top: 8%;
+  bottom: 8%;
+  background: radial-gradient(closest-side, rgba(255, 77, 103, .28), rgba(124, 58, 237, .16) 60%, transparent);
+  filter: blur(16px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kick-pill .pulse { animation: cjv-pulse 2s ease-out infinite; }
+  .kick-pill::after { animation: cjv-shine 5s ease-in-out infinite; }
+}
