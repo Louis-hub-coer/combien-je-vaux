@@ -7,21 +7,18 @@ import { SALARY_SEARCH_PLACEHOLDER } from "@/lib/constants";
 
 const EXAMPLES = [
   "Mbappé",
-  "IShowSpeed",
-  "Cristiano Ronaldo",
-  "Lionel Messi",
-  "Taylor Swift",
-  "Matt Damon",
   "Trader",
   "Cardiologue",
-  "Data scientist",
-  "Prof de sport",
   "Contrôleur SNCF",
+  "IShowSpeed",
+  "Data scientist",
   "ASVP",
   "Boulanger",
-  "Éboueur",
   "Maire",
   "Ministre",
+  "Cristiano Ronaldo",
+  "Éboueur",
+  "Prof de sport",
 ];
 
 export function SearchBarTyping() {

@@ -112,11 +112,11 @@ export type SearchExample = { label: string; color: string; icon: LucideIcon };
 
 export const searchExamples: SearchExample[] = [
   { label: "Mbappé", color: palette.coral.color, icon: Star },
-  { label: "IShowSpeed", color: palette.coral.color, icon: Star },
   { label: "Trader", color: palette.violet.color, icon: Briefcase },
   { label: "Cardiologue", color: palette.cyan.color, icon: Stethoscope },
   { label: "Prof de sport", color: palette.green.color, icon: Dumbbell },
   { label: "Data scientist", color: palette.blue.color, icon: Cpu },
+  { label: "IShowSpeed", color: palette.coral.color, icon: Star },
 ];
 
 /** Mots qui défilent dans l'accroche (conservé pour réutilisation éventuelle). */

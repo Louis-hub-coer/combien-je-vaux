@@ -90,16 +90,36 @@ function segLabel(dim: "specialization" | "city", values: string[]): string {
 /** Présélection du filtre à partir des mots précis de la requête (Goldman → anglo-saxonne, etc.). */
 function pickSegment(dim: "specialization" | "city", segments: string[], query: string): string {
   const q = norm(query);
-  // 1) un libellé de segment est présent tel quel dans la requête (libéral, grande ville, Paris…)
+  const sing = (t: string) => (t.length > 3 && t.endsWith("s") ? t.slice(0, -1) : t);
+  const qToks = new Set(q.split(" ").filter(Boolean).map(sing));
+
+  // 1) libellé de segment présent tel quel (libéral, grande ville, Paris…)
   for (const s of segments) {
     const sn = norm(s);
     if (dim === "city" && sn === "france") continue;
     if (sn.length >= 3 && q.includes(sn)) return s;
   }
-  // 2) marchés financiers : marque → type de structure
+  // 2) meilleur recouvrement de mots distinctifs (singulier/pluriel) :
+  //    « commercial grand compte » → « Grands comptes (KAM) » ; « fonctionnaire catégorie A » → « Catégorie A ».
+  let best = "";
+  let bestScore = 0;
+  for (const s of segments) {
+    const sn = norm(s);
+    if (dim === "city" && sn === "france") continue;
+    const toks = sn.replace(/[()]/g, " ").split(/[^a-z0-9]+/).filter(Boolean).map(sing);
+    let score = 0;
+    for (const t of toks) {
+      if (t.length >= 3 && qToks.has(t)) score += 2;       // mot distinctif
+      else if (/^[a-z]$/.test(t) && qToks.has(t)) score += 1; // lettre (catégorie A/B/C)
+    }
+    if (score > bestScore) { bestScore = score; best = s; }
+  }
+  if (bestScore > 0) return best;
+
+  // 3) marchés financiers : marque → type de structure
   if (dim === "specialization") {
-    const anglo = /goldman|sachs|morgan|jpmorgan|\bjp\b|citi|barclays|\bubs\b|credit suisse|deutsche|hsbc|lazard|rothschild|nomura|jefferies|moelis|evercore|merrill|bofa|bank of america/;
-    const french = /\bbnp\b|paribas|societe generale|socgen|natixis|credit agricole|cacib|oddo|kepler|exane|amundi/;
+    const anglo = /goldman|sachs|morgan|jpmorgan|\bjp\b|citi|barclays|\bubs\b|credit suisse|deutsche|hsbc|lazard|rothschild|nomura|jefferies|moelis|evercore|merrill|bofa|bank of america|blackrock|blackstone|\bkkr\b|carlyle/;
+    const french = /\bbnp\b|paribas|societe generale|socgen|\bsg\b|natixis|credit agricole|cacib|oddo|kepler|exane|amundi/;
     if (anglo.test(q)) { const m = segments.find((s) => /anglo|americ|amer|international/.test(norm(s))); if (m) return m; }
     if (french.test(q)) { const m = segments.find((s) => /francais|france/.test(norm(s))); if (m) return m; }
   }

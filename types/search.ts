@@ -76,5 +76,6 @@ export interface SearchResponse {
   results: SearchResultItem[];     // résultats proches (limités, sans le best)
   total: number;                   // nb de candidats scorés
   fallbackUsed: boolean;           // true si repli flou
+  blocked?: boolean;               // true si requête offensante (état propre, aucun résultat)
   tookMs: number;
 }

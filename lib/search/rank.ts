@@ -38,6 +38,18 @@ const FINANCE_CORE = new Set(["banque", "banques", "bfi", "investissement", "mar
 // Entreprises « exotiques / spécifiques » à éviter quand non demandées.
 const FOREIGN_MARKER = new Set(["americaine", "americain", "american", "us", "internationale", "international", "big", "tier", "scale", "serie"]);
 
+// Marques finance : utilisées comme INDICE (jamais affichées). Déclenchent l'intention
+// finance et l'ajout de concepts finance, pour router « Trader Goldman Sachs », « Sales BofA »,
+// « Associate M&A Lazard », « Amundi sales »… vers la bonne fiche générique.
+const BRAND_FINANCE = new Set([
+  "goldman", "sachs", "morgan", "stanley", "jpmorgan", "jp", "citi", "citigroup",
+  "barclays", "ubs", "hsbc", "deutsche", "nomura", "jefferies", "moelis", "evercore",
+  "merrill", "bofa", "blackrock", "blackstone", "kkr", "carlyle",
+  "bnp", "paribas", "socgen", "natixis", "cacib", "amundi", "rothschild", "lazard",
+  "oddo", "kepler", "exane",
+]);
+const FINANCE_CONCEPTS = ["finance", "banque", "bfi", "marches", "financiers", "investissement"];
+
 export interface QueryContext {
   qNorm: string;
   qTokens: string[];      // tokens utiles (sans mots vides)
@@ -51,10 +63,21 @@ export function buildContext(normalizedQuery: string): QueryContext {
   const all = normalizedQuery ? normalizedQuery.split(" ").filter(Boolean) : [];
   const useful = all.filter((t) => !STOP.has(t));
   const qTokens = useful.length ? useful : all;
-  const concepts = qTokens.map((t) => SYNONYMS[t] ?? [t]);
+  // Concepts = synonymes + forme au singulier (tolérance pluriels : « traders » -> « trader »).
+  const concepts = qTokens.map((t) => {
+    const base = SYNONYMS[t] ?? [t];
+    const sing = t.length > 3 && t.endsWith("s") ? t.slice(0, -1) : null;
+    return sing && !base.includes(sing) ? [...base, sing] : base;
+  });
   const expanded = new Set<string>();
   concepts.forEach((g) => g.forEach((x) => expanded.add(x)));
-  const financeIntent = qTokens.some((t) => FINANCE_CORE.has(t));
+
+  let financeIntent = qTokens.some((t) => FINANCE_CORE.has(t));
+  // Une marque finance dans la requête = indice finance (concepts finance ajoutés).
+  if (qTokens.some((t) => BRAND_FINANCE.has(t))) {
+    financeIntent = true;
+    for (const c of FINANCE_CONCEPTS) expanded.add(c);
+  }
   return { qNorm: normalizedQuery, qTokens, concepts, expanded, financeIntent };
 }
 

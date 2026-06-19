@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Search, X, Loader2, RotateCcw,
+  Search, X, Loader2, RotateCcw, ChevronRight, TrendingUp, Flame, Layers, BarChart3,
   Star, Briefcase, Stethoscope, Dumbbell, Cpu,
   Banknote, HeartPulse, Gavel, Lightbulb, Megaphone, Building2, Factory, Trophy, Landmark,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { SearchResponse } from "@/types/search";
+import { formatEuro } from "@/lib/display";
 import { BestResultCard } from "./BestResultCard";
 import { SimilarResults } from "./SimilarResults";
 import { SearchEmptyState } from "./SearchEmptyState";
@@ -18,25 +19,35 @@ const PLACEHOLDER = "Tapez un métier, une entreprise ou une personnalité…";
 
 const SUGGESTIONS: { label: string; icon: LucideIcon; color: string; tint: string }[] = [
   { label: "Mbappé", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
-  { label: "IShowSpeed", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
   { label: "Trader", icon: Briefcase, color: "#7C3AED", tint: "#EEE7FD" },
   { label: "Cardiologue", icon: Stethoscope, color: "#06B6D4", tint: "#DEF7FB" },
   { label: "Prof de sport", icon: Dumbbell, color: "#00C389", tint: "#E1F7EF" },
   { label: "Data scientist", icon: Cpu, color: "#2F6BFF", tint: "#EAF1FF" },
+  { label: "IShowSpeed", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
 ];
 
-const CATEGORIES: { label: string; icon: LucideIcon; color: string; tint: string; query: string }[] = [
-  { label: "Finance", icon: Banknote, color: "#7C3AED", tint: "#EEE7FD", query: "trader" },
-  { label: "Tech / Data", icon: Cpu, color: "#00C389", tint: "#E1F7EF", query: "data scientist" },
-  { label: "Santé", icon: HeartPulse, color: "#06B6D4", tint: "#DEF7FB", query: "médecin" },
-  { label: "Droit", icon: Gavel, color: "#2F6BFF", tint: "#EAF1FF", query: "avocat" },
-  { label: "Conseil", icon: Lightbulb, color: "#F59E0B", tint: "#FEF1D8", query: "consultant" },
-  { label: "Marketing", icon: Megaphone, color: "#FF4D67", tint: "#FFE5EA", query: "responsable marketing" },
-  { label: "Immobilier", icon: Building2, color: "#2F6BFF", tint: "#EAF1FF", query: "agent immobilier" },
-  { label: "Industrie / ingénierie", icon: Factory, color: "#F59E0B", tint: "#FEF1D8", query: "ingénieur" },
-  { label: "Sport", icon: Trophy, color: "#00C389", tint: "#E1F7EF", query: "footballeur" },
-  { label: "Fonction publique", icon: Landmark, color: "#7C3AED", tint: "#EEE7FD", query: "enseignant" },
+const CATEGORIES: { key: string; label: string; blurb: string; icon: LucideIcon; color: string; tint: string }[] = [
+  { key: "finance", label: "Finance", blurb: "Traders, M&A, gestion, BFI", icon: Banknote, color: "#7C3AED", tint: "#EEE7FD" },
+  { key: "tech", label: "Tech / Data", blurb: "Dev, data, cloud, IA", icon: Cpu, color: "#00C389", tint: "#E1F7EF" },
+  { key: "sante", label: "Santé", blurb: "Médecins, soins, spécialités", icon: HeartPulse, color: "#06B6D4", tint: "#DEF7FB" },
+  { key: "droit", label: "Droit", blurb: "Avocats, notariat, justice", icon: Gavel, color: "#2F6BFF", tint: "#EAF1FF" },
+  { key: "conseil", label: "Conseil", blurb: "Stratégie, audit, advisory", icon: Lightbulb, color: "#F59E0B", tint: "#FEF1D8" },
+  { key: "marketing", label: "Marketing", blurb: "Comm, digital, growth", icon: Megaphone, color: "#FF4D67", tint: "#FFE5EA" },
+  { key: "immobilier", label: "Immobilier", blurb: "Agents, gestion, promotion", icon: Building2, color: "#2F6BFF", tint: "#EAF1FF" },
+  { key: "industrie", label: "Industrie / ingénierie", blurb: "Production, ingénieurs", icon: Factory, color: "#F59E0B", tint: "#FEF1D8" },
+  { key: "sport", label: "Sport", blurb: "Athlètes, coachs, clubs", icon: Trophy, color: "#00C389", tint: "#E1F7EF" },
+  { key: "public", label: "Fonction publique", blurb: "Sécurité, défense, État", icon: Landmark, color: "#7C3AED", tint: "#EEE7FD" },
 ];
+
+type SectorItem = { name: string; sub: string; total: number | null };
+type SectorOverview = {
+  key: string;
+  label: string;
+  top: SectorItem[];
+  popular: SectorItem[];
+  accessible: SectorItem[];
+  stat: { medianEur: number | null; topName: string; popularName: string; count: number };
+};
 
 export function SalarySearch() {
   const [q, setQ] = useState("");
@@ -213,7 +224,7 @@ export function SalarySearch() {
         )}
 
         {status === "done" && resp && !resp.best && (
-          <SearchEmptyState variant="empty" query={submitted} />
+          <SearchEmptyState variant={resp.blocked ? "blocked" : "empty"} query={submitted} />
         )}
       </div>
     </div>
@@ -221,30 +232,118 @@ export function SalarySearch() {
 }
 
 function Categories({ onPick }: { onPick: (term: string) => void }) {
+  const [active, setActive] = useState<string | null>(null);
+  const [data, setData] = useState<SectorOverview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const acRef = useRef<AbortController | null>(null);
+
+  const openSector = useCallback((key: string) => {
+    if (active === key) { setActive(null); setData(null); return; }
+    setActive(key);
+    setData(null);
+    setLoading(true);
+    acRef.current?.abort();
+    const ac = new AbortController();
+    acRef.current = ac;
+    fetch(`/api/salaires/sectors?key=${encodeURIComponent(key)}`, { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: SectorOverview | null) => { setData(d); setLoading(false); })
+      .catch((e) => { if ((e as Error).name !== "AbortError") setLoading(false); });
+  }, [active]);
+
+  const fmtStat = (n: number | null) => (n == null ? "—" : formatEuro(n));
+
   return (
     <div className="mx-auto max-w-[940px]">
-      <h2 className="mb-4 text-center text-[13px] font-semibold uppercase tracking-[0.14em] text-slate">
+      <h2 className="mb-1 text-center text-[13px] font-semibold uppercase tracking-[0.14em] text-slate">
         Explorer par secteur
       </h2>
+      <p className="mb-4 text-center text-[13px] text-slate-soft">Choisissez un secteur pour voir les vrais salaires et des fiches cliquables.</p>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {CATEGORIES.map((c) => {
           const Icon = c.icon;
+          const on = active === c.key;
           return (
             <button
-              key={c.label}
-              onClick={() => onPick(c.query)}
-              className="group flex flex-col items-center gap-2.5 rounded-2xl border border-line bg-white/90 px-3 py-5 text-center backdrop-blur transition hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              key={c.key}
+              onClick={() => openSector(c.key)}
+              aria-pressed={on}
+              className={`group flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-center backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+                on
+                  ? "border-brand bg-brand-tint shadow-[0_12px_28px_-14px_rgba(0,195,137,.6)]"
+                  : "border-line bg-white/90 hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card"
+              }`}
             >
-              <span
-                className="flex h-11 w-11 items-center justify-center rounded-xl transition group-hover:scale-105"
-                style={{ background: c.tint, color: c.color }}
-              >
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl transition group-hover:scale-105" style={{ background: c.tint, color: c.color }}>
                 <Icon className="h-[22px] w-[22px]" aria-hidden />
               </span>
               <span className="text-[13.5px] font-semibold leading-tight text-ink">{c.label}</span>
+              <span className="text-[11px] leading-tight text-slate-soft">{c.blurb}</span>
             </button>
           );
         })}
+      </div>
+
+      {active && (
+        <div className="mt-5 rounded-3xl border border-line bg-white/80 p-5 backdrop-blur md:p-6">
+          {loading && (
+            <div className="flex items-center gap-2 text-[14px] text-slate">
+              <Loader2 className="h-4 w-4 animate-spin text-brand" /> Chargement du secteur…
+            </div>
+          )}
+          {!loading && data && (
+            <>
+              {/* Mini-stat sectorielle */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                  <BarChart3 className="h-4 w-4 text-brand-dark" aria-hidden /> {data.label}
+                </span>
+                {data.stat.medianEur != null && (
+                  <span className="text-[12.5px] text-slate">Salaire médian&nbsp;: <b className="font-semibold text-ink" style={{ wordSpacing: "0.12em" }}>{fmtStat(data.stat.medianEur)}</b></span>
+                )}
+                {data.stat.topName && <span className="text-[12.5px] text-slate">Top métier&nbsp;: <b className="font-semibold text-ink">{data.stat.topName}</b></span>}
+                {data.stat.popularName && <span className="text-[12.5px] text-slate">Populaire&nbsp;: <b className="font-semibold text-ink">{data.stat.popularName}</b></span>}
+              </div>
+
+              <SectorGroup title="Top salaires" icon={TrendingUp} items={data.top} onPick={onPick} />
+              <SectorGroup title="Métiers populaires" icon={Flame} items={data.popular} onPick={onPick} />
+              <SectorGroup title="À comparer aussi" icon={Layers} items={data.accessible} onPick={onPick} />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectorGroup({ title, icon: Icon, items, onPick }: { title: string; icon: LucideIcon; items: SectorItem[]; onPick: (t: string) => void }) {
+  if (!items?.length) return null;
+  return (
+    <div className="mt-5">
+      <span className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate">
+        <Icon className="h-3.5 w-3.5 text-slate-soft" aria-hidden /> {title}
+      </span>
+      <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((it) => (
+          <button
+            key={it.name}
+            onClick={() => onPick(it.name)}
+            className="group flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5 text-left shadow-soft transition hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold leading-snug text-ink">{it.name}</span>
+              <span className="mt-0.5 block truncate text-[12px] text-slate">{it.sub}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 self-center">
+              <span className="whitespace-nowrap text-[13.5px] font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.12em" }}>
+                {it.total != null ? formatEuro(it.total) : "—"}
+                <span className="ml-1 font-normal text-slate-soft" style={{ wordSpacing: "normal" }}>/ an</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-soft transition group-hover:translate-x-0.5 group-hover:text-ink" />
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

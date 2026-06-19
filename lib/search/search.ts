@@ -2,6 +2,7 @@ import "server-only"; // garde-fou serveur
 import { getDataset, type IndexedRecord } from "./dataset";
 import { normalizeQuery, normalizeText } from "./normalize";
 import { buildContext, scoreRecord, fuzzyScore, compareScored, GOOD_SCORE } from "./rank";
+import { isBlockedQuery } from "./guardrails";
 import type { SearchParams, SearchResponse, SearchResultItem, MatchType, GroupVariant } from "../../types/search";
 
 const MIN_Q = 2;
@@ -73,6 +74,11 @@ export async function searchSalaries({ q, limit }: SearchParams): Promise<Search
     return { query, normalizedQuery, best: null, results: [], total: 0, fallbackUsed: false, tookMs: Date.now() - start };
   }
 
+  // Garde-fou : requête offensante -> état propre, aucun résultat, aucun fuzzy.
+  if (isBlockedQuery(normalizedQuery)) {
+    return { query, normalizedQuery, best: null, results: [], total: 0, fallbackUsed: false, blocked: true, tookMs: Date.now() - start };
+  }
+
   const { records, groupIndex } = await getDataset();
   const ctx = buildContext(normalizedQuery);
 
@@ -91,7 +97,10 @@ export async function searchSalaries({ q, limit }: SearchParams): Promise<Search
     const fuzzy: SearchResultItem[] = [];
     for (const r of records) {
       const s = fuzzyScore(r, normalizedQuery);
-      if (s > 0.34) fuzzy.push(toItem(r, Math.round(s * 100), "fuzzy"));
+      // Seuil global relevé ; seuil renforcé pour les personnalités afin de ne PAS
+      // matcher une personne quand la requête ne ressemble pas vraiment à son nom.
+      const min = r.isPerson ? 0.55 : 0.4;
+      if (s > min) fuzzy.push(toItem(r, Math.round(s * 100), "fuzzy"));
     }
     fuzzy.sort(compareScored);
     if (fuzzy.length) { pool = fuzzy; fallbackUsed = true; }
