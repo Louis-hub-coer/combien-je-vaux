@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 
 type CSSVars = React.CSSProperties & { [key: `--${string}`]: string | number };
 
-/** Variations dynamiques de la partie « … salaire <de/d'…> » du titre homepage. */
+/** Variations dynamiques de la partie « … salaire <de/d'…> » du titre homepage.
+ *  prêtre / imam / rabbin sont insérés à des positions espacées (jamais à la suite). */
 const PHRASES = [
   "d’un électricien",
   "de Mbappé",
+  "d’un prêtre",
   "d’un contrôleur SNCF",
   "d’un éboueur",
+  "d’un imam",
   "d’un trader",
   "d’un data scientist",
   "d’un cardiologue",
+  "d’un rabbin",
   "d’un boulanger",
   "d’un maire",
   "d’un ministre",
@@ -72,8 +76,8 @@ export function HeroRotatingTitle() {
       style={{ "--d": ".06s" } as CSSVars}
     >
       Cherchez le salaire
-      <br />
-      <span className="inline-flex items-center whitespace-nowrap">
+      {/* Ligne animée : hauteur fixe (min-h) + centrage vertical -> aucun décalage quand le mot change. */}
+      <span className="mt-1 flex min-h-[1.18em] items-center justify-center whitespace-nowrap leading-[1.1]">
         <span className="hl">{text}</span>
         {!reduce && <span className="cjv-caret" />}
       </span>

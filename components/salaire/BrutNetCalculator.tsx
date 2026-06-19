@@ -102,6 +102,7 @@ export function BrutNetCalculator() {
   const [mode, setMode] = useState<Mode>("rapide");
   const [direction, setDirection] = useState<Direction>("brut");
   const [netBasis, setNetBasis] = useState<NetBasis>("before");
+  const [netPeriod, setNetPeriod] = useState<Period>("mensuel");
   const [disp, setDisp] = useState<Disp>("mois");
   const [openInfo, setOpenInfo] = useState(false);
 
@@ -132,12 +133,15 @@ export function BrutNetCalculator() {
         ? { status, contract, parts: 1, isCouple: false, taxMode: "bareme" as const }
         : { status, contract, parts, isCouple: couple, pasRate, taxMode: pasRate != null ? ("pas" as const) : ("bareme" as const) };
 
-    if (direction === "net") return calculateFromNet(amountValue, netBasis, opts);
+    if (direction === "net") {
+      const monthlyNet = netPeriod === "annuel" ? amountValue / 12 : amountValue;
+      return calculateFromNet(monthlyNet, netBasis, opts);
+    }
     return calculateFromGross(
       { amount: amountValue, period, bonusAnnual: mode === "precis" ? parseFloat(bonus) || 0 : 0 },
       opts,
     );
-  }, [valid, amountValue, period, status, contract, mode, direction, netBasis, couple, children, taxChoice, pas, bonus, parts]);
+  }, [valid, amountValue, period, status, contract, mode, direction, netBasis, netPeriod, couple, children, taxChoice, pas, bonus, parts]);
 
   const bars = result ? buildBrutNetChartData(result) : [];
   const maxBar = bars.length ? Math.max(...bars.map((b) => b.value)) : 1;
@@ -170,13 +174,15 @@ export function BrutNetCalculator() {
         <div className="mt-5 grid items-start gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           {/* ---- Formulaire ---- */}
           <div key={mode} className="cjv-drop grid gap-4">
-            <Field label={direction === "brut" ? "Montant" : netBasis === "before" ? "Net mensuel avant impôt" : "Net mensuel après impôt"}>
+            <Field
+              label={
+                direction === "brut"
+                  ? "Montant"
+                  : `${netPeriod === "annuel" ? "Net annuel" : "Net mensuel"} ${netBasis === "before" ? "avant impôt" : "après impôt"}`
+              }
+            >
               <NumberInput value={amount} onChange={setAmount} placeholder="ex. 3 000" suffix="€" />
             </Field>
-
-            {direction === "net" && (
-              <Seg<NetBasis> value={netBasis} onChange={setNetBasis} options={[{ v: "before", label: "Avant impôt" }, { v: "after", label: "Après impôt" }]} />
-            )}
 
             <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
               {direction === "brut" && (
@@ -184,6 +190,18 @@ export function BrutNetCalculator() {
                   <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Je saisis</span>
                   <Seg<Period> value={period} onChange={setPeriod} options={[{ v: "mensuel", label: "Brut mensuel" }, { v: "annuel", label: "Brut annuel" }]} />
                 </div>
+              )}
+              {direction === "net" && (
+                <>
+                  <div>
+                    <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Je saisis</span>
+                    <Seg<Period> value={netPeriod} onChange={setNetPeriod} options={[{ v: "mensuel", label: "Net mensuel" }, { v: "annuel", label: "Net annuel" }]} />
+                  </div>
+                  <div>
+                    <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Base</span>
+                    <Seg<NetBasis> value={netBasis} onChange={setNetBasis} size="sm" options={[{ v: "before", label: "Avant impôt" }, { v: "after", label: "Après impôt" }]} />
+                  </div>
+                </>
               )}
               <div>
                 <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Statut</span>
@@ -279,8 +297,9 @@ export function BrutNetCalculator() {
                 </div>
 
                 {/* Graphique intégré */}
-                <div className="mt-5">
-                  <p className="mb-3.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-soft">Du coût employeur au net (par an)</p>
+                <div className="mt-8 border-t border-line/60 pt-6">
+                  <p className="text-[13.5px] font-bold text-ink">Ce que paie l’employeur vs ce que vous touchez</p>
+                  <p className="mb-4 mt-0.5 text-[12px] text-slate-soft">Une visualisation simple du brut, du net et du coût employeur.</p>
                   <div className="space-y-4">
                     {bars.map((b, i) => (
                       <div key={b.key}>
