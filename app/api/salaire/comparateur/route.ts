@@ -81,8 +81,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const below = pool.filter((p) => p.diff < 0).sort((a, b) => b.diff - a.diff); // plus proches d'abord (diff ↑ vers 0)
-    const above = pool.filter((p) => p.diff >= 0).sort((a, b) => a.diff - b.diff); // plus proches d'abord
+    const below = pool.filter((p) => p.diff < 0).sort((a, b) => b.diff - a.diff); // strictement en dessous, plus proche d'abord
+    const above = pool.filter((p) => p.diff > 0).sort((a, b) => a.diff - b.diff); // strictement au-dessus, plus proche d'abord
 
     return NextResponse.json(
       {

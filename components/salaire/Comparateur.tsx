@@ -100,21 +100,22 @@ function ProfileRow({ p }: { p: Profile }) {
 }
 
 /** Côté de la carte « Vous êtes entre… ». */
-function BetweenSide({ p, kind, delay = 0 }: { p: Profile; kind: "below" | "above"; delay?: number }) {
+function BetweenSide({ p, kind }: { p: Profile; kind: "below" | "above" }) {
   const color = kind === "below" ? "#C0264A" : "#0A8F60";
   return (
     <Link href={`/salaires?q=${encodeURIComponent(p.name)}`}
-      className="cjv-rise group relative block overflow-hidden rounded-2xl border border-line bg-white/85 p-4 pt-5 transition hover:-translate-y-[3px] hover:border-[#d7dceb] hover:shadow-card"
-      style={{ animationDelay: `${delay}ms` }}>
+      className="group relative block h-full overflow-hidden rounded-2xl border border-line bg-white/85 p-4 pt-5 transition hover:-translate-y-[3px] hover:border-[#d7dceb] hover:shadow-[0_24px_60px_-30px_rgba(5,9,24,.5)]">
       {/* accent coloré en haut */}
       <span aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: color }} />
-      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
+      {/* glow discret au hover */}
+      <span aria-hidden className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: `radial-gradient(80% 60% at 50% 0%, ${kind === "below" ? "rgba(192,38,74,.10)" : "rgba(10,143,96,.12)"}, transparent 70%)` }} />
+      <span className="relative flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
         {kind === "below" ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
         {kind === "below" ? "Juste en dessous" : "Juste au-dessus"}
       </span>
-      <span className="mt-1.5 block truncate text-[17px] font-bold text-ink transition-colors group-hover:text-brand-dark">{p.name}</span>
-      <span className="mt-0.5 block truncate text-[12px] text-slate-soft">{p.category}</span>
-      <span className="mt-2.5 flex items-center justify-between gap-2">
+      <span className="relative mt-1.5 block truncate text-[17px] font-bold text-ink transition-colors group-hover:text-brand-dark">{p.name}</span>
+      <span className="relative mt-0.5 block truncate text-[12px] text-slate-soft">{p.category}</span>
+      <span className="relative mt-2.5 flex items-center justify-between gap-2">
         <span className="text-[15px] font-extrabold text-ink"><Money value={p.salary} per="an" /></span>
         <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-bold [font-variant-numeric:tabular-nums] ${p.diff >= 0 ? "bg-[#E1F7EF] text-[#0A8F60]" : "bg-[#FFE5EA] text-[#C0264A]"}`} style={{ wordSpacing: "0.04em" }}>
           {diffLabel(p.diff)}
@@ -173,17 +174,19 @@ export function Comparateur() {
   const above = data?.between.above ?? null;
   const userPos = scalePos(shownAnnual || comparableAnnual || 0);
 
-  const hlBelow = "rounded-md bg-[#FFE5EA] px-1.5 py-0.5 font-extrabold text-[#C0264A]";
-  const hlAbove = "rounded-md bg-[#E1F7EF] px-1.5 py-0.5 font-extrabold text-[#0A8F60]";
   const synthese = (() => {
-    if (below && above) return <>Votre salaire se situe entre <span className={hlBelow}>{below.name}</span> et <span className={hlAbove}>{above.name}</span>.</>;
-    if (below) return <>Vous êtes au-dessus de <span className={hlBelow}>{below.name}</span>.</>;
-    if (above) return <>Vous êtes en dessous de <span className={hlAbove}>{above.name}</span>.</>;
+    if (below && above) return <>Votre salaire se situe entre <b className="font-extrabold text-ink">{below.name}</b> et <b className="font-extrabold text-ink">{above.name}</b>.</>;
+    if (below) return <>Vous êtes au-dessus de <b className="font-extrabold text-ink">{below.name}</b>.</>;
+    if (above) return <>Vous êtes en dessous de <b className="font-extrabold text-ink">{above.name}</b>.</>;
     return <>Votre salaire est hors de l’échelle des profils connus.</>;
   })();
+  // Position de l'utilisateur entre les deux profils (mini-échelle locale).
+  const betweenFrac = below && above && above.salary > below.salary
+    ? Math.min(0.86, Math.max(0.14, (shownAnnual - below.salary) / (above.salary - below.salary)))
+    : 0.5;
 
   return (
-    <div className="mx-auto max-w-[980px]">
+    <div className="mx-auto max-w-[1040px]">
       {/* ---------- Carte formulaire ---------- */}
       <div className="cjv-toolwrap">
         <div aria-hidden className="cjv-toolhalo" />
@@ -258,15 +261,39 @@ export function Comparateur() {
               <p className="mt-4 max-w-[680px] text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.25] tracking-[-0.01em] text-ink">{synthese}</p>
 
               {(below || above) && (
-                <div className="mt-6 grid items-stretch gap-3 md:grid-cols-[1fr_auto_1fr]">
-                  {below ? <BetweenSide p={below} kind="below" delay={0} /> : <div className="flex items-center justify-center rounded-2xl border border-dashed border-line bg-white/50 p-4 text-center text-[13px] text-slate-soft">Rien juste en dessous.</div>}
-                  <div className="cjv-rise relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-5 py-3 text-center text-white shadow-[0_14px_30px_-12px_rgba(47,107,255,.55)]"
-                    style={{ background: "linear-gradient(135deg,#0A8F60,#2F6BFF)", animationDelay: "80ms" }}>
-                    <span aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-white/15 blur-xl" />
-                    <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/80">Vous</span>
-                    <span className="text-[15px] font-extrabold"><Money value={shownAnnual} per="an" /></span>
+                <div className="relative mt-8">
+                  {/* mini-ligne reliant les deux profils, utilisateur au centre (desktop) */}
+                  {below && above && (
+                    <div aria-hidden className="pointer-events-none absolute inset-x-[18%] top-[58px] hidden md:block">
+                      <div className="h-[3px] w-full rounded-full bg-gradient-to-r from-[#FFD0DA] via-[#E6E9F2] to-[#BFEFDC]" />
+                      <span className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#7C3AED] shadow" style={{ left: `${betweenFrac * 100}%` }} />
+                    </div>
+                  )}
+
+                  <div className="relative grid items-stretch gap-4 md:grid-cols-[1fr_auto_1fr]">
+                    {below ? (
+                      <div className="cjv-in-left"><BetweenSide p={below} kind="below" /></div>
+                    ) : (
+                      <div className="flex items-center justify-center rounded-2xl border border-dashed border-line bg-white/50 p-4 text-center text-[13px] text-slate-soft">Rien juste en dessous.</div>
+                    )}
+
+                    {/* Bulle « Vous » premium */}
+                    <div className="relative flex items-center justify-center">
+                      <div className="cjv-you relative flex min-w-[150px] flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl px-6 py-4 text-center text-white shadow-[0_18px_40px_-14px_rgba(124,58,237,.6)]"
+                        style={{ background: "linear-gradient(135deg,#7C3AED 0%,#5B4BE6 45%,#2F6BFF 100%)" }}>
+                        <span aria-hidden className="cjv-you-glow" />
+                        <span aria-hidden className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-white/20 blur-xl" />
+                        <span className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-white/85">Vous</span>
+                        <span className="text-[16px] font-extrabold"><Money value={shownAnnual} per="an" /></span>
+                      </div>
+                    </div>
+
+                    {above ? (
+                      <div className="cjv-in-right"><BetweenSide p={above} kind="above" /></div>
+                    ) : (
+                      <div className="flex items-center justify-center rounded-2xl border border-dashed border-line bg-white/50 p-4 text-center text-[13px] text-slate-soft">Rien juste au-dessus.</div>
+                    )}
                   </div>
-                  {above ? <BetweenSide p={above} kind="above" delay={160} /> : <div className="flex items-center justify-center rounded-2xl border border-dashed border-line bg-white/50 p-4 text-center text-[13px] text-slate-soft">Rien juste au-dessus.</div>}
                 </div>
               )}
             </div>
@@ -275,16 +302,16 @@ export function Comparateur() {
           {/* ====== Votre salaire sur l'échelle (grande carte interactive) ====== */}
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
-            <div className="rounded-[28px] border border-line bg-white/90 p-6 shadow-[0_34px_90px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-10">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface text-brand-dark"><Compass className="h-4 w-4" aria-hidden /></span>
-                <h3 className="font-display text-[clamp(19px,2.8vw,26px)] font-extrabold tracking-[-0.01em] text-ink">Votre salaire sur l’échelle</h3>
+            <div className="rounded-[32px] border border-line bg-white/90 p-7 shadow-[0_40px_100px_-50px_rgba(5,9,24,.55)] backdrop-blur md:p-12">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><Compass className="h-5 w-5" aria-hidden /></span>
+                <h3 className="font-display text-[clamp(21px,3vw,30px)] font-extrabold tracking-[-0.015em] text-ink">Votre salaire sur l’échelle</h3>
               </div>
-              <p className="mt-1.5 text-[13.5px] text-slate">Survolez un repère pour voir le salaire, cliquez pour ouvrir une fiche.</p>
+              <p className="mt-2 text-[14px] text-slate">Survolez un repère pour voir le salaire, cliquez pour ouvrir une fiche.</p>
 
-              <div className="relative mx-auto mt-24 mb-24 max-w-[900px]">
+              <div className="relative mt-28 mb-28 w-full">
                 {/* piste */}
-                <div className="h-3.5 w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
+                <div className="h-4 w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
                 {/* repères */}
                 {SCALE.map((m, idx) => {
@@ -292,26 +319,29 @@ export function Comparateur() {
                   const Tag: any = m.q ? Link : "div";
                   const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
                   const lower = idx % 2 === 1; // étiquette alternée dessus/dessous (anti-chevauchement)
+                  const edge = left < 14 ? "l" : left > 86 ? "r" : "c"; // position tooltip intelligente près des bords
+                  const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
+                  const arrPos = edge === "l" ? "left-3" : edge === "r" ? "right-3" : "left-1/2 -translate-x-1/2";
                   return (
                     <Tag key={m.label} {...tagProps}
-                      className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-50"
+                      className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-[70]"
                       style={{ left: `${left}%` }}>
-                      <span className={`block h-4 w-4 rounded-full border-2 border-white shadow-[0_2px_6px_rgba(15,23,42,.3)] transition group-hover:scale-[1.35] ${m.q ? "cursor-pointer bg-[#7C3AED]" : "bg-slate-soft"}`} />
+                      <span className={`block h-[18px] w-[18px] rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.4] ${m.q ? "cursor-pointer bg-[#7C3AED]" : "bg-slate-soft"}`} />
                       {/* étiquette persistante */}
-                      <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11.5px] font-semibold ${m.q ? "text-[#6D28D9]" : "text-slate"} ${lower ? "top-6" : "bottom-6"}`}>{m.label}</span>
-                      {/* tooltip — toujours au-dessus, au premier plan */}
-                      <span className="pointer-events-none absolute bottom-[34px] left-1/2 z-[60] -translate-x-1/2 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-[12.5px] font-bold text-white opacity-0 shadow-[0_12px_28px_-8px_rgba(0,0,0,.55)] transition duration-150 group-hover:opacity-100">
+                      <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold ${m.q ? "text-[#6D28D9]" : "text-slate"} ${lower ? "top-7" : "bottom-7"}`}>{m.label}</span>
+                      {/* tooltip — toujours au-dessus du point actif, edge-aware, au premier plan */}
+                      <span className={`pointer-events-none absolute bottom-[38px] z-[80] whitespace-nowrap rounded-xl bg-ink px-3.5 py-2.5 text-[13px] font-bold text-white opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
                         {m.label} — environ {euro(m.value)} / an
-                        <span aria-hidden className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 bg-ink" />
+                        <span aria-hidden className={`absolute top-full h-2.5 w-2.5 -translate-y-1.5 rotate-45 bg-ink ${arrPos}`} />
                       </span>
                     </Tag>
                   );
                 })}
 
                 {/* marqueur utilisateur */}
-                <div className="cjv-pin absolute -top-14 z-40 flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
-                  <span className="whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12px] font-extrabold text-ink shadow-[0_8px_20px_-6px_rgba(0,195,137,.85)]">Vous êtes ici</span>
-                  <span className="cjv-pin-dot mt-1.5 h-5 w-5 rounded-full border-2 border-white bg-brand shadow-[0_2px_10px_rgba(0,195,137,.7)]" />
+                <div className="cjv-pin absolute -top-16 z-40 flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
+                  <span className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-extrabold text-ink shadow-[0_8px_22px_-6px_rgba(0,195,137,.9)]">Vous êtes ici</span>
+                  <span className="cjv-pin-dot mt-1.5 h-[22px] w-[22px] rounded-full border-2 border-white bg-brand shadow-[0_2px_12px_rgba(0,195,137,.75)]" />
                 </div>
               </div>
 

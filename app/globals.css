@@ -320,3 +320,30 @@
 @keyframes cjvRise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .cjv-rise { animation: cjvRise .5s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .cjv-rise { animation: none; } }
+
+/* Scène « Vous êtes entre… » : cartes qui arrivent de gauche / droite */
+@keyframes cjvInLeft { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes cjvInRight { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
+.cjv-in-left { animation: cjvInLeft .55s cubic-bezier(.2,.8,.2,1) both; }
+.cjv-in-right { animation: cjvInRight .55s cubic-bezier(.2,.8,.2,1) both; }
+
+/* Bulle « Vous » : apparition + flottement + halo */
+@keyframes cjvYouIn { from { opacity: 0; transform: translateY(8px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes cjvYouFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.cjv-you { animation: cjvYouIn .5s ease-out both, cjvYouFloat 4.5s ease-in-out 0.6s infinite; transition: transform .25s ease, box-shadow .25s ease; }
+.cjv-you:hover { transform: translateY(-3px) scale(1.03); }
+.cjv-you-glow { position: absolute; inset: -8px; z-index: -1; border-radius: 22px; background: radial-gradient(closest-side, rgba(124,58,237,.5), rgba(47,107,255,.28) 60%, transparent); filter: blur(12px); animation: cjvYouHalo 3s ease-in-out infinite; }
+@keyframes cjvYouHalo { 0%,100% { opacity: .55; } 50% { opacity: .9; } }
+
+/* Fonds animés discrets (comparateur) */
+@keyframes cjvDriftA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(26px,-22px); } }
+@keyframes cjvDriftB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px,18px); } }
+@keyframes cjvDriftC { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(14px,20px) scale(1.08); } }
+.cjv-drift-a { animation: cjvDriftA 16s ease-in-out infinite; }
+.cjv-drift-b { animation: cjvDriftB 20s ease-in-out infinite; }
+.cjv-drift-c { animation: cjvDriftC 13s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cjv-in-left, .cjv-in-right, .cjv-you { animation: none; }
+  .cjv-you-glow, .cjv-drift-a, .cjv-drift-b, .cjv-drift-c { animation: none; }
+}
