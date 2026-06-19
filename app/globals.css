@@ -226,3 +226,10 @@
   .kick-pill .pulse { animation: cjv-pulse 2s ease-out infinite; }
   .kick-pill::after { animation: cjv-shine 5s ease-in-out infinite; }
 }
+
+/* Apparition du dropdown « Salaire » (navbar) */
+@keyframes cjvDrop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cjv-drop { animation: cjvDrop 0.16s ease-out; transform-origin: top center; }

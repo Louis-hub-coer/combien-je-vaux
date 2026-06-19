@@ -6,6 +6,8 @@ import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { navItems } from "@/lib/constants";
+import { salaireTools } from "@/lib/salaire-tools";
+import { SalaireNavItem } from "./SalaireNavItem";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
@@ -18,15 +20,19 @@ export function Navbar() {
         </Link>
 
         <div className="hidden justify-self-center lg:flex lg:gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-xl px-[13px] py-2 text-[14.5px] font-medium text-slate transition hover:bg-surface hover:text-ink"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.href === "/salaire" ? (
+              <SalaireNavItem key={item.href} label={item.label} />
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-xl px-[13px] py-2 text-[14.5px] font-medium text-slate transition hover:bg-surface hover:text-ink"
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </div>
 
         <div className="flex items-center gap-2 justify-self-end">
@@ -58,15 +64,36 @@ export function Navbar() {
         <div className="mx-auto mt-2 max-w-container rounded-[20px] border border-line bg-white p-4 shadow-card lg:hidden">
           <nav className="grid gap-1">
             {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-ink transition hover:bg-surface"
-              >
-                <span className="h-2 w-2 rounded-full" style={{ background: item.color }} />
-                {item.label}
-              </Link>
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium text-ink transition hover:bg-surface"
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ background: item.color }} />
+                  {item.label}
+                </Link>
+                {item.href === "/salaire" && (
+                  <div className="ml-[18px] mt-0.5 grid gap-0.5 border-l border-line pl-3">
+                    {salaireTools.map((t) => {
+                      const Icon = t.icon;
+                      return (
+                        <Link
+                          key={t.key}
+                          href={t.href}
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] font-medium text-slate transition hover:bg-surface hover:text-ink"
+                        >
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: t.tint, color: t.color }}>
+                            <Icon className="h-[15px] w-[15px]" aria-hidden />
+                          </span>
+                          {t.title}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             ))}
           </nav>
           <div className="mt-3 grid gap-2">
