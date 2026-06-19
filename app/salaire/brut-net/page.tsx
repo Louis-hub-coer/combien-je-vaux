@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SalaireBackground } from "@/components/salaire/SalaireBackground";
 import { BrutNetCalculator } from "@/components/salaire/BrutNetCalculator";
+import { BrutNetTitleSwap } from "@/components/salaire/BrutNetTitleSwap";
 
 export const metadata: Metadata = {
   title: "Salaire brut ↔ net : convertir en quelques secondes",
@@ -29,7 +30,8 @@ export default function BrutNetPage() {
         </Link>
 
         <header className="mx-auto mt-7 max-w-[720px] text-center">
-          <span className="mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
+          <span className="cjv-badge relative mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
+            <span aria-hidden className="cjv-badge-halo" />
             <span className="relative flex h-2.5 w-2.5 items-center justify-center">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
               <span
@@ -40,7 +42,7 @@ export default function BrutNetPage() {
             Outil salaire
           </span>
           <h1 className="mx-auto max-w-[680px] text-balance text-[clamp(32px,5.2vw,56px)] font-extrabold leading-[1.06] tracking-[-0.032em] text-ink">
-            Convertissez votre <span className="cjv-grad">brut en net</span>
+            <BrutNetTitleSwap />
           </h1>
           <p className="mx-auto mt-5 max-w-[580px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
             Estimez votre net mensuel, votre net après impôt et le coût employeur en quelques secondes.

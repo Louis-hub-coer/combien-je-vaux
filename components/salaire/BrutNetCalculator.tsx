@@ -113,6 +113,7 @@ export function BrutNetCalculator() {
   // précis
   const [couple, setCouple] = useState(false);
   const [children, setChildren] = useState("0");
+  const [taxChoice, setTaxChoice] = useState<"auto" | "custom">("auto");
   const [pas, setPas] = useState("");
   const [bonus, setBonus] = useState("");
 
@@ -122,7 +123,10 @@ export function BrutNetCalculator() {
 
   const result: BrutNetResult | null = useMemo(() => {
     if (!valid) return null;
-    const pasRate = mode === "precis" && pas.trim() ? Math.min(1, Math.max(0, (parseFloat(pas.replace(",", ".")) || 0) / 100)) : null;
+    const pasRate =
+      mode === "precis" && taxChoice === "custom" && pas.trim()
+        ? Math.min(1, Math.max(0, (parseFloat(pas.replace(",", ".")) || 0) / 100))
+        : null;
     const opts =
       mode === "rapide"
         ? { status, contract, parts: 1, isCouple: false, taxMode: "bareme" as const }
@@ -133,7 +137,7 @@ export function BrutNetCalculator() {
       { amount: amountValue, period, bonusAnnual: mode === "precis" ? parseFloat(bonus) || 0 : 0 },
       opts,
     );
-  }, [valid, amountValue, period, status, contract, mode, direction, netBasis, couple, children, pas, bonus, parts]);
+  }, [valid, amountValue, period, status, contract, mode, direction, netBasis, couple, children, taxChoice, pas, bonus, parts]);
 
   const bars = result ? buildBrutNetChartData(result) : [];
   const maxBar = bars.length ? Math.max(...bars.map((b) => b.value)) : 1;
@@ -205,7 +209,24 @@ export function BrutNetCalculator() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Bonus annuel"><NumberInput value={bonus} onChange={setBonus} placeholder="0" suffix="€" /></Field>
-                  <Field label="Taux PAS" hint="Vide = barème."><NumberInput value={pas} onChange={setPas} placeholder="ex. 7,5" suffix="%" /></Field>
+                </div>
+                <div>
+                  <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Impôt estimé</span>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button type="button" onClick={() => setTaxChoice("auto")}
+                      className={`rounded-xl border px-3 py-2 text-[12.5px] font-semibold transition ${taxChoice === "auto" ? "border-transparent bg-brand text-ink shadow-[0_8px_18px_-10px_rgba(0,195,137,.7)]" : "border-line bg-white text-slate hover:-translate-y-[1px] hover:text-ink hover:shadow-soft"}`}>
+                      Estimer automatiquement
+                    </button>
+                    <button type="button" onClick={() => setTaxChoice("custom")}
+                      className={`rounded-xl border px-3 py-2 text-[12.5px] font-semibold transition ${taxChoice === "custom" ? "border-transparent bg-brand text-ink shadow-[0_8px_18px_-10px_rgba(0,195,137,.7)]" : "border-line bg-white text-slate hover:-translate-y-[1px] hover:text-ink hover:shadow-soft"}`}>
+                      J’ai un taux personnalisé
+                    </button>
+                  </div>
+                  {taxChoice === "custom" && (
+                    <div className="cjv-drop mt-3 max-w-[220px]">
+                      <Field label="Taux de prélèvement"><NumberInput value={pas} onChange={setPas} placeholder="7,5 %" suffix="%" /></Field>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -256,14 +277,14 @@ export function BrutNetCalculator() {
                 </div>
 
                 {/* Graphique intégré */}
-                <div className="mt-4">
-                  <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-soft">Du coût employeur au net (par an)</p>
-                  <div className="space-y-2.5">
+                <div className="mt-5">
+                  <p className="mb-3.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-soft">Du coût employeur au net (par an)</p>
+                  <div className="space-y-4">
                     {bars.map((b, i) => (
                       <div key={b.key}>
-                        <div className="mb-1 flex items-center justify-between gap-3 text-[12.5px]">
-                          <span className="min-w-0 truncate font-medium text-slate">{b.label}</span>
-                          <span className="shrink-0 whitespace-nowrap font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.04em" }}>{formatSalaryAmount(b.value)}</span>
+                        <div className="mb-2 flex items-baseline justify-between gap-6">
+                          <span className="min-w-0 truncate text-[12.5px] font-medium text-slate">{b.label}</span>
+                          <span className="shrink-0 whitespace-nowrap pl-1 text-[13.5px] font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.05em" }}>{formatSalaryAmount(b.value)}</span>
                         </div>
                         <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface">
                           <div className="h-full origin-left rounded-full" style={{ width: `${Math.max(3, (b.value / maxBar) * 100)}%`, background: b.color, animation: `cjvBar .6s ease-out ${i * 0.08}s both` }} />

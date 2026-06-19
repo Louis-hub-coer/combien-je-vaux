@@ -17,6 +17,13 @@ type Status = "idle" | "loading" | "done" | "error";
 
 const PLACEHOLDER = "Tapez un métier ou une personnalité…";
 
+/** Exemples qui s'écrivent / s'effacent dans la barre centrale (effet moteur). */
+const TYPING_EXAMPLES = [
+  "Mbappé", "Trader", "Cardiologue", "Prof de sport", "Data scientist", "IShowSpeed",
+  "Contrôleur SNCF", "Éboueur", "Boulanger", "Maire", "Ministre", "Cristiano Ronaldo",
+  "Cardiologue libéral", "Dentiste", "Avocat", "Infirmier", "Pilote de ligne",
+];
+
 const SUGGESTIONS: { label: string; icon: LucideIcon; color: string; tint: string }[] = [
   { label: "Mbappé", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
   { label: "Trader", icon: Briefcase, color: "#7C3AED", tint: "#EEE7FD" },
@@ -51,6 +58,9 @@ type SectorOverview = {
 
 export function SalarySearch() {
   const [q, setQ] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [typed, setTyped] = useState(""); // placeholder animé (visuel)
+  const [reduceTyped, setReduceTyped] = useState(false);
   const [submitted, setSubmitted] = useState("");
   const [resp, setResp] = useState<SearchResponse | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -58,6 +68,46 @@ export function SalarySearch() {
   const abortRef = useRef<AbortController | null>(null);
   const exploreRef = useRef<HTMLDivElement>(null);
   const [sectorKey, setSectorKey] = useState<string | null>(null);
+
+  // Placeholder animé (s'écrit puis s'efface). Désactivé si saisie, focus ou reduced-motion.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mq.matches) {
+      setReduceTyped(true);
+      setTyped(PLACEHOLDER);
+      return;
+    }
+    let i = 0;
+    let j = 0;
+    let del = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const w = TYPING_EXAMPLES[i];
+      if (!del) {
+        j++;
+        if (j >= w.length) {
+          del = true;
+          setTyped(w);
+          timer = setTimeout(tick, 1500);
+          return;
+        }
+      } else {
+        j--;
+        if (j <= 0) {
+          del = false;
+          i = (i + 1) % TYPING_EXAMPLES.length;
+          j = 0;
+          setTyped("");
+          timer = setTimeout(tick, 340);
+          return;
+        }
+      }
+      setTyped(w.slice(0, Math.max(j, 0)));
+      timer = setTimeout(tick, del ? 30 : 60);
+    };
+    timer = setTimeout(tick, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const runSearch = useCallback(async (term: string) => {
     const query = term.trim();
@@ -155,17 +205,26 @@ export function SalarySearch() {
           ) : (
             <Search className="h-6 w-6 shrink-0 text-slate" aria-hidden />
           )}
-          <input
-            ref={inputRef}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            type="search"
-            inputMode="search"
-            autoComplete="off"
-            aria-label="Rechercher un salaire"
-            placeholder={PLACEHOLDER}
-            className="min-w-0 flex-1 bg-transparent text-[17px] font-medium leading-normal text-ink outline-none placeholder:font-normal placeholder:text-slate-soft [&::-webkit-search-cancel-button]:appearance-none"
-          />
+          <span className="relative flex min-w-0 flex-1 items-center overflow-hidden text-[17px]">
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              type="search"
+              inputMode="search"
+              autoComplete="off"
+              aria-label="Rechercher un salaire"
+              className="min-w-0 flex-1 bg-transparent font-medium leading-normal text-ink outline-none placeholder:text-transparent [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {q === "" && !focused && (
+              <span className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap">
+                <span className={reduceTyped ? "text-slate-soft" : "font-medium text-ink"}>{typed || PLACEHOLDER}</span>
+                {!reduceTyped && typed !== "" && <span className="cjv-caret" />}
+              </span>
+            )}
+          </span>
           {q && (
             <button
               type="button"

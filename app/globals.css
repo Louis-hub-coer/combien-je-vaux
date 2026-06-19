@@ -283,3 +283,15 @@
   .cjv-iconglow { animation: cjvIconGlow 3.4s ease-in-out infinite; }
   .cjv-scan { animation: cjvScanX 5s ease-in-out infinite; }
 }
+
+/* Badge hero /salaire/brut-net — apparition douce + halo + lift au hover */
+@keyframes cjvBadgeIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+.cjv-badge { animation: cjvBadgeIn .6s ease-out both; transition: transform .25s ease, box-shadow .25s ease; }
+.cjv-badge:hover { transform: translateY(-2px); box-shadow: 0 12px 26px -14px rgba(124,58,237,.45); }
+.cjv-badge-halo {
+  position: absolute; inset: -6px; z-index: -1; border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(0,195,137,.34), rgba(124,58,237,.18) 60%, transparent);
+  filter: blur(10px); opacity: 0; transition: opacity .25s ease;
+}
+.cjv-badge:hover .cjv-badge-halo { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .cjv-badge { animation: none; } }
