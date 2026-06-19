@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Search, X, Loader2, RotateCcw, ChevronRight, TrendingUp, Flame, Layers, BarChart3,
+  Search, X, Loader2, RotateCcw, ChevronRight, TrendingUp, Flame, Layers, BarChart3, Compass,
   Star, Briefcase, Stethoscope, Dumbbell, Cpu,
   Banknote, HeartPulse, Gavel, Lightbulb, Megaphone, Building2, Factory, Trophy, Landmark,
 } from "lucide-react";
@@ -56,6 +56,8 @@ export function SalarySearch() {
   const [status, setStatus] = useState<Status>("idle");
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const exploreRef = useRef<HTMLDivElement>(null);
+  const [sectorKey, setSectorKey] = useState<string | null>(null);
 
   const runSearch = useCallback(async (term: string) => {
     const query = term.trim();
@@ -119,6 +121,20 @@ export function SalarySearch() {
     setStatus("idle");
     setSubmitted("");
     inputRef.current?.focus();
+  };
+
+  const scrollToExplore = () =>
+    setTimeout(() => exploreRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  // Bouton « Explorer par secteur » : si une recherche est affichée, on revient à l'exploration.
+  const goExplore = () => {
+    if (resp?.best || status === "done") clear();
+    scrollToExplore();
+  };
+  // Depuis le bloc compact sous les résultats : ouvrir un secteur précis.
+  const openSectorFromResults = (key: string) => {
+    clear();
+    setSectorKey(key);
+    scrollToExplore();
   };
 
   const showResults = (status === "done" || (status === "loading" && !!resp?.best)) && !!resp?.best;
@@ -191,8 +207,22 @@ export function SalarySearch() {
         })}
       </div>
 
-      <div className="mt-10" aria-live="polite">
-        {status === "idle" && <Categories onPick={pick} />}
+      {/* Accès secondaire : explorer par secteur (scrolle / ouvre le bloc) */}
+      <div className="mt-3 flex justify-center">
+        <button
+          onClick={goExplore}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-slate transition hover:text-ink"
+        >
+          <Compass className="h-3.5 w-3.5 text-brand-dark" aria-hidden /> Explorer les salaires par secteur
+        </button>
+      </div>
+
+      <div className="mt-9" aria-live="polite">
+        {status === "idle" && (
+          <div ref={exploreRef}>
+            <SectorExplorer active={sectorKey} onActiveChange={setSectorKey} onPick={pick} />
+          </div>
+        )}
 
         {status === "loading" && !resp && <ResultsSkeleton />}
 
@@ -206,7 +236,11 @@ export function SalarySearch() {
           <div className={status === "loading" ? "opacity-60" : ""}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <p className="min-w-0 truncate text-[13.5px] text-slate">
-                Résultat pour <span className="font-semibold text-ink">«&nbsp;{submitted}&nbsp;»</span>
+                {resp?.companyLabel ? (
+                  <>Salaires associés à <span className="font-semibold text-ink">«&nbsp;{resp.companyLabel}&nbsp;»</span></>
+                ) : (
+                  <>Résultat pour <span className="font-semibold text-ink">«&nbsp;{submitted}&nbsp;»</span></>
+                )}
               </p>
               <button
                 onClick={clear}
@@ -220,6 +254,7 @@ export function SalarySearch() {
               <BestResultCard key={resp.best.id} item={resp.best} fallbackUsed={resp.fallbackUsed} query={submitted} />
               <SimilarResults items={resp.results} onPick={pick} />
             </div>
+            <CompactSectors onOpen={openSectorFromResults} onExploreAll={goExplore} />
           </div>
         )}
 
@@ -231,33 +266,40 @@ export function SalarySearch() {
   );
 }
 
-function Categories({ onPick }: { onPick: (term: string) => void }) {
-  const [active, setActive] = useState<string | null>(null);
+const eur = (n: number | null) => (n == null ? "—" : formatEuro(n));
+
+function SectorExplorer({
+  active,
+  onActiveChange,
+  onPick,
+}: {
+  active: string | null;
+  onActiveChange: (k: string | null) => void;
+  onPick: (t: string) => void;
+}) {
   const [data, setData] = useState<SectorOverview | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const acRef = useRef<AbortController | null>(null);
 
-  const openSector = useCallback((key: string) => {
-    if (active === key) { setActive(null); setData(null); return; }
-    setActive(key);
-    setData(null);
-    setLoading(true);
+  useEffect(() => {
+    if (!active) { setData(null); return; }
+    setShowAll(false); setData(null); setLoading(true);
     acRef.current?.abort();
-    const ac = new AbortController();
-    acRef.current = ac;
-    fetch(`/api/salaires/sectors?key=${encodeURIComponent(key)}`, { signal: ac.signal })
+    const ac = new AbortController(); acRef.current = ac;
+    fetch(`/api/salaires/sectors?key=${encodeURIComponent(active)}`, { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: SectorOverview | null) => { setData(d); setLoading(false); })
       .catch((e) => { if ((e as Error).name !== "AbortError") setLoading(false); });
+    return () => ac.abort();
   }, [active]);
 
-  const fmtStat = (n: number | null) => (n == null ? "—" : formatEuro(n));
+  const label = CATEGORIES.find((c) => c.key === active)?.label ?? "";
+  const hasMore = !!data && (data.top.length > 3 || data.popular.length > 3 || data.accessible.length > 2);
 
   return (
     <div className="mx-auto max-w-[940px]">
-      <h2 className="mb-1 text-center text-[13px] font-semibold uppercase tracking-[0.14em] text-slate">
-        Explorer par secteur
-      </h2>
+      <h2 className="mb-1 text-center text-[13px] font-semibold uppercase tracking-[0.14em] text-slate">Explorer par secteur</h2>
       <p className="mb-4 text-center text-[13px] text-slate-soft">Choisissez un secteur pour voir les vrais salaires et des fiches cliquables.</p>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -267,18 +309,16 @@ function Categories({ onPick }: { onPick: (term: string) => void }) {
           return (
             <button
               key={c.key}
-              onClick={() => openSector(c.key)}
+              onClick={() => onActiveChange(on ? null : c.key)}
               aria-pressed={on}
               className={`group flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-center backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-                on
-                  ? "border-brand bg-brand-tint shadow-[0_12px_28px_-14px_rgba(0,195,137,.6)]"
-                  : "border-line bg-white/90 hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card"
+                on ? "border-brand bg-brand-tint shadow-[0_12px_28px_-14px_rgba(0,195,137,.6)]" : "border-line bg-white/90 hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card"
               }`}
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl transition group-hover:scale-105" style={{ background: c.tint, color: c.color }}>
-                <Icon className="h-[22px] w-[22px]" aria-hidden />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl transition group-hover:scale-105" style={{ background: c.tint, color: c.color }}>
+                <Icon className="h-[20px] w-[20px]" aria-hidden />
               </span>
-              <span className="text-[13.5px] font-semibold leading-tight text-ink">{c.label}</span>
+              <span className="text-[13px] font-semibold leading-tight text-ink">{c.label}</span>
               <span className="text-[11px] leading-tight text-slate-soft">{c.blurb}</span>
             </button>
           );
@@ -286,7 +326,7 @@ function Categories({ onPick }: { onPick: (term: string) => void }) {
       </div>
 
       {active && (
-        <div className="mt-5 rounded-3xl border border-line bg-white/80 p-5 backdrop-blur md:p-6">
+        <div className="mt-5 rounded-3xl border border-line bg-white/85 p-5 backdrop-blur md:p-6">
           {loading && (
             <div className="flex items-center gap-2 text-[14px] text-slate">
               <Loader2 className="h-4 w-4 animate-spin text-brand" /> Chargement du secteur…
@@ -294,21 +334,21 @@ function Categories({ onPick }: { onPick: (term: string) => void }) {
           )}
           {!loading && data && (
             <>
-              {/* Mini-stat sectorielle */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-                  <BarChart3 className="h-4 w-4 text-brand-dark" aria-hidden /> {data.label}
-                </span>
-                {data.stat.medianEur != null && (
-                  <span className="text-[12.5px] text-slate">Salaire médian&nbsp;: <b className="font-semibold text-ink" style={{ wordSpacing: "0.12em" }}>{fmtStat(data.stat.medianEur)}</b></span>
-                )}
-                {data.stat.topName && <span className="text-[12.5px] text-slate">Top métier&nbsp;: <b className="font-semibold text-ink">{data.stat.topName}</b></span>}
-                {data.stat.popularName && <span className="text-[12.5px] text-slate">Populaire&nbsp;: <b className="font-semibold text-ink">{data.stat.popularName}</b></span>}
-              </div>
-
-              <SectorGroup title="Top salaires" icon={TrendingUp} items={data.top} onPick={onPick} />
-              <SectorGroup title="Métiers populaires" icon={Flame} items={data.popular} onPick={onPick} />
-              <SectorGroup title="À comparer aussi" icon={Layers} items={data.accessible} onPick={onPick} />
+              <StatTiles data={data} />
+              <SectorList title="Top salaires" icon={TrendingUp} accent="#7C3AED" items={data.top} limit={showAll ? 5 : 3} onPick={onPick} />
+              <SectorList title="Métiers populaires" icon={Flame} accent="#FF7A1A" items={data.popular} limit={showAll ? 5 : 3} onPick={onPick} />
+              <SectorList title="À comparer aussi" icon={Layers} accent="#2F6BFF" items={data.accessible} limit={showAll ? 5 : 2} onPick={onPick} />
+              {hasMore && (
+                <div className="mt-5 flex justify-center">
+                  <button
+                    onClick={() => setShowAll((v) => !v)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-[13px] font-semibold text-ink transition hover:-translate-y-[1px] hover:border-[#d7dceb] hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  >
+                    {showAll ? "Voir moins" : `Voir plus de salaires ${label}`}
+                    <ChevronRight className={`h-4 w-4 transition ${showAll ? "-rotate-90" : "rotate-90"}`} aria-hidden />
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -317,33 +357,97 @@ function Categories({ onPick }: { onPick: (term: string) => void }) {
   );
 }
 
-function SectorGroup({ title, icon: Icon, items, onPick }: { title: string; icon: LucideIcon; items: SectorItem[]; onPick: (t: string) => void }) {
+function StatTiles({ data }: { data: SectorOverview }) {
+  const top = data.top[0];
+  const pop = data.popular[0];
+  const Amount = ({ v }: { v: number | null }) => (
+    <span className="text-[17px] font-extrabold leading-none text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.12em" }}>
+      {eur(v)}
+      <span className="ml-1 text-[11px] font-normal text-slate-soft" style={{ wordSpacing: "normal" }}>/ an</span>
+    </span>
+  );
+  const Tile = ({ label, Icon, name, v, tint, color }: { label: string; Icon: LucideIcon; name: string; v: number | null; tint: string; color: string }) => (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-soft">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: tint, color }}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-soft">{label}</span>
+        {name && <span className="mb-0.5 block truncate text-[12px] font-medium text-slate">{name}</span>}
+        <Amount v={v} />
+      </span>
+    </div>
+  );
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <Tile label="Salaire médian" Icon={BarChart3} name={`${data.stat.count} métiers`} v={data.stat.medianEur} tint="#E1F7EF" color="#00A06E" />
+      {top && <Tile label="Top salaire" Icon={TrendingUp} name={top.name} v={top.total} tint="#EEE7FD" color="#7C3AED" />}
+      {pop && <Tile label="Métier populaire" Icon={Flame} name={pop.name} v={pop.total} tint="#FFE9DD" color="#FF7A1A" />}
+    </div>
+  );
+}
+
+function SectorList({
+  title, icon: Icon, accent, items, limit, onPick,
+}: { title: string; icon: LucideIcon; accent: string; items: SectorItem[]; limit: number; onPick: (t: string) => void }) {
   if (!items?.length) return null;
+  const shown = items.slice(0, limit);
   return (
     <div className="mt-5">
       <span className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate">
-        <Icon className="h-3.5 w-3.5 text-slate-soft" aria-hidden /> {title}
+        <Icon className="h-3.5 w-3.5" style={{ color: accent }} aria-hidden /> {title}
       </span>
-      <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((it) => (
+      <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {shown.map((it) => (
           <button
             key={it.name}
             onClick={() => onPick(it.name)}
-            className="group flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5 text-left shadow-soft transition hover:-translate-y-[2px] hover:border-[#d7dceb] hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+            className="group flex items-center gap-2.5 rounded-xl border border-line bg-white px-3 py-2.5 text-left transition hover:-translate-y-[1px] hover:border-[#d7dceb] hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
+            <span className="h-7 w-1 shrink-0 rounded-full" style={{ background: accent }} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[14px] font-semibold leading-snug text-ink">{it.name}</span>
-              <span className="mt-0.5 block truncate text-[12px] text-slate">{it.sub}</span>
+              <span className="block truncate text-[13.5px] font-semibold leading-tight text-ink">{it.name}</span>
+              <span className="block truncate text-[11.5px] text-slate-soft">{it.sub}</span>
             </span>
-            <span className="flex shrink-0 items-center gap-1.5 self-center">
-              <span className="whitespace-nowrap text-[13.5px] font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.12em" }}>
-                {it.total != null ? formatEuro(it.total) : "—"}
-                <span className="ml-1 font-normal text-slate-soft" style={{ wordSpacing: "normal" }}>/ an</span>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-slate-soft transition group-hover:translate-x-0.5 group-hover:text-ink" />
+            <span className="ml-auto whitespace-nowrap text-[13px] font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.12em" }}>
+              {it.total != null ? formatEuro(it.total) : "—"}
+              <span className="ml-1 text-[10.5px] font-normal text-slate-soft" style={{ wordSpacing: "normal" }}>/ an</span>
             </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-slate-soft transition group-hover:translate-x-0.5 group-hover:text-ink" />
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Version compacte affichée sous les résultats : ne pas bloquer l'exploration. */
+function CompactSectors({ onOpen, onExploreAll }: { onOpen: (k: string) => void; onExploreAll: () => void }) {
+  const quick = CATEGORIES.slice(0, 5);
+  return (
+    <div className="mt-8 rounded-3xl border border-line bg-white/70 p-5 backdrop-blur">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-slate">Explorer aussi par secteur</h3>
+        <button onClick={onExploreAll} className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-brand-dark transition hover:gap-1.5">
+          Voir tous les salaires par secteur <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {quick.map((c) => {
+          const Icon = c.icon;
+          return (
+            <button
+              key={c.key}
+              onClick={() => onOpen(c.key)}
+              className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-semibold text-ink transition hover:-translate-y-[1px] hover:border-[#d7dceb] hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: c.tint, color: c.color }}>
+                <Icon className="h-[13px] w-[13px]" aria-hidden />
+              </span>
+              {c.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

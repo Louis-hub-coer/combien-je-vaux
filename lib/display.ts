@@ -37,7 +37,7 @@ export function broadCategory(item: SearchResultItem): string {
   }
 
   if (/finance|banque|assuran/.test(cat)) return /marche|trading|bourse/.test(sub) ? "Finance de marché" : "Finance";
-  if (/tech|informat|\bdata\b|logiciel|digital/.test(cat)) return "Tech / Data";
+  if (/tech|informat|\bdata\b|logiciel/.test(cat)) return "Tech / Data";
   if (/sante|medical/.test(cat)) return "Santé";
   if (/droit|justice|juridi|notari/.test(cat)) return "Droit";
   if (/politique|institution/.test(cat)) return /local|elus|maire|commune/.test(sub) ? "Politique locale" : "Politique";

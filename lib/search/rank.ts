@@ -6,7 +6,7 @@ import type { MatchType, SearchResultItem } from "../../types/search";
 export const GOOD_SCORE = 260;
 
 // Mots vides retirés des requêtes (mais conservés à l'indexation).
-const STOP = new Set(["de", "du", "des", "la", "le", "les", "l", "d", "un", "une", "et", "en", "au", "aux", "pour", "the", "of"]);
+export const STOP = new Set(["de", "du", "des", "la", "le", "les", "l", "d", "un", "une", "et", "en", "au", "aux", "pour", "the", "of"]);
 
 // Expansion sémantique : concept -> tokens équivalents (normalisés).
 const SYNONYMS: Record<string, string[]> = {

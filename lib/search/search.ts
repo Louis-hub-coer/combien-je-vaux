@@ -1,8 +1,9 @@
 import "server-only"; // garde-fou serveur
 import { getDataset, type IndexedRecord } from "./dataset";
 import { normalizeQuery, normalizeText } from "./normalize";
-import { buildContext, scoreRecord, fuzzyScore, compareScored, GOOD_SCORE } from "./rank";
+import { buildContext, scoreRecord, fuzzyScore, compareScored, GOOD_SCORE, STOP } from "./rank";
 import { isBlockedQuery } from "./guardrails";
+import { detectBrand } from "./brands";
 import type { SearchParams, SearchResponse, SearchResultItem, MatchType, GroupVariant } from "../../types/search";
 
 const MIN_Q = 2;
@@ -60,6 +61,19 @@ function dedupe(items: SearchResultItem[]): SearchResultItem[] {
   return out;
 }
 
+/** Résout un intitulé de métier (ex. « Analyste M&A ») vers sa ligne représentative (is_default). */
+function findMetier(records: IndexedRecord[], label: string): IndexedRecord | null {
+  const n = normalizeText(label);
+  let best: IndexedRecord | null = null;
+  for (const r of records) {
+    if (r.type === "personne_nom") continue;
+    if (normalizeText(r.displayName) === n || normalizeText(r.job) === n) {
+      if (!best || (r.isDefault && !best.isDefault)) best = r;
+    }
+  }
+  return best;
+}
+
 /**
  * Recherche unique partagée SSR (/salaires) + API. Le CSV reste serveur ;
  * on ne renvoie qu'un objet léger (meilleur résultat + proches limités).
@@ -80,6 +94,36 @@ export async function searchSalaries({ q, limit }: SearchParams): Promise<Search
   }
 
   const { records, groupIndex } = await getDataset();
+
+  // Entreprise saisie SEULE -> métier représentatif (best) + métiers associés (proches).
+  // L'affichage reste générique (jamais la marque dans le titre).
+  const brand = detectBrand(normalizedQuery);
+  if (brand) {
+    const stripRe = new RegExp(brand.re.source, "g");
+    const rest = normalizedQuery.replace(stripRe, " ").replace(/\s+/g, " ").trim();
+    const restMeaningful = rest.split(" ").filter((t) => t && t.length >= 2 && !STOP.has(t));
+    if (restMeaningful.length === 0) {
+      const recs = brand.metiers
+        .map((label) => findMetier(records, label))
+        .filter((r): r is IndexedRecord => !!r);
+      if (recs.length) {
+        const best = toItem(recs[0], 1000, "company");
+        best.groupVariants = groupVariantsFor(best.groupKey, groupIndex);
+        const results = recs.slice(1, 1 + RELATED_COUNT).map((r) => toItem(r, 900, "company"));
+        return {
+          query,
+          normalizedQuery,
+          best,
+          results,
+          total: recs.length,
+          fallbackUsed: false,
+          companyLabel: brand.label,
+          tookMs: Date.now() - start,
+        };
+      }
+    }
+  }
+
   const ctx = buildContext(normalizedQuery);
 
   // 1) candidats + scoring

@@ -21,6 +21,7 @@ export type MatchType =
   | "keyword"      // clé exacte (search_exact_keys / aliases)
   | "coverage"     // couverture partielle des mots de la requête
   | "related"      // résultat proche / exploratoire (non issu du scoring direct)
+  | "company"      // métier représentatif d'une entreprise saisie seule
   | "fuzzy";       // repli flou (trigrammes)
 
 export interface SearchParams {
@@ -77,5 +78,6 @@ export interface SearchResponse {
   total: number;                   // nb de candidats scorés
   fallbackUsed: boolean;           // true si repli flou
   blocked?: boolean;               // true si requête offensante (état propre, aucun résultat)
+  companyLabel?: string;           // si la requête est une entreprise seule (ex. "Goldman Sachs")
   tookMs: number;
 }
