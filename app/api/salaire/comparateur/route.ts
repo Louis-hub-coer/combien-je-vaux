@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
   const annualRaw = Number(searchParams.get("annual"));
   const annual = Number.isFinite(annualRaw) && annualRaw > 0 ? annualRaw : null;
   const target = searchParams.get("target"); // url_slug d'une fiche /salaires
+  const kind = (searchParams.get("kind") ?? "all") as "all" | "metier" | "person";
 
   if (annual == null && !target) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Référence à partir d'un slug (fiche consultée).
-    let reference: Profile | null = null;
+    let reference: (Profile & { city?: string; experience?: string; specialization?: string }) | null = null;
     if (target) {
       const matches = records.filter((r) => r.slug === target && r.salaryTotalEur != null && (r.salaryTotalEur as number) > 0);
       if (matches.length) {
@@ -81,6 +82,9 @@ export async function GET(req: NextRequest) {
           diff: annual != null ? (r.salaryTotalEur as number) - annual : 0,
           category: shortCategory(r),
           isPerson: r.isPerson,
+          city: r.city || r.country || "",
+          experience: r.experience || "",
+          specialization: r.specialization || "",
         };
       }
     }
@@ -93,6 +97,8 @@ export async function GET(req: NextRequest) {
     const pool: Profile[] = [];
     for (const r of byName.values()) {
       if (!isInteresting(r)) continue;
+      if (kind === "metier" && r.isPerson) continue;
+      if (kind === "person" && !r.isPerson) continue;
       pool.push({
         name: r.displayName,
         slug: r.slug,

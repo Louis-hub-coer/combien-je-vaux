@@ -219,8 +219,14 @@ export function SalarySearch() {
             />
             {q === "" && (
               <span className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap">
-                <span className={reduceTyped ? "text-slate-soft" : "font-medium text-ink"}>{typed || PLACEHOLDER}</span>
-                {!reduceTyped && typed !== "" && !focused && <span className="cjv-caret" />}
+                {reduceTyped ? (
+                  <span className="text-slate-soft">{PLACEHOLDER}</span>
+                ) : (
+                  <>
+                    <span className="font-medium text-ink">{typed}</span>
+                    {!focused && <span className="cjv-caret" />}
+                  </>
+                )}
               </span>
             )}
           </span>
