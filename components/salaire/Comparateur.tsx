@@ -140,6 +140,9 @@ export function Comparateur() {
   // Métiers ajoutés à l'échelle
   const [extra, setExtra] = useState<{ name: string; salary: number }[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
+  const [addSugg, setAddSugg] = useState<Suggestion[]>([]);
+  const [addHi, setAddHi] = useState(-1);
 
   const amountValue = parseAmount(amount);
   const valid = Number.isFinite(amountValue) && amountValue > 0;
@@ -237,6 +240,9 @@ export function Comparateur() {
   const expDisp = exp || (exps.length === 1 ? exps[0] : "");
   const specDisp = spec || (specs.length === 1 ? specs[0] : "");
   const refContext = [specDisp, cityDisp, expDisp].filter(Boolean).join(" · ");
+  // Pour les phrases naturelles : "le salaire de Data scientist à Paris avec 5-10 ans d'expérience"
+  const metierLabel = metierRef?.name ?? "ce métier";
+  const ctxSuffix = [cityDisp ? `à ${cityDisp}` : "", expDisp ? `avec ${expDisp} d'expérience` : ""].filter(Boolean).join(" ");
 
   // ---- Lancer la comparaison ----
   const run = useCallback(async (annual: number, k: Kind) => {
@@ -264,11 +270,28 @@ export function Comparateur() {
   };
   const reset = () => { setAmount(""); setBonus(""); setData(null); setStatus("idle"); };
 
+  // Autocomplétion de l'ajout de métier à l'échelle (même endpoint)
+  useEffect(() => {
+    const q = addQuery.trim();
+    if (q.length < 2) { setAddSugg([]); setAddHi(-1); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/salaire/comparateur/suggest?q=${encodeURIComponent(q)}`);
+        const d = (await res.json()) as { items: Suggestion[] };
+        const items = (d.items ?? []).filter((it) => !extra.some((e) => e.name === it.name));
+        setAddSugg(items);
+        setAddHi(items.length ? 0 : -1);
+      } catch { setAddSugg([]); }
+    }, 160);
+    return () => clearTimeout(t);
+  }, [addQuery, extra]);
+
   const addMetier = async (name: string) => {
     if (extra.length >= 3 || extra.some((e) => e.name === name)) return;
     const best = await fetchBest(name);
     if (best && best.salaryTotalEur != null) setExtra((p) => [...p, { name: best.displayName, salary: best.salaryTotalEur as number }]);
-    setAddOpen(false);
+    setAddQuery("");
+    setAddSugg([]);
   };
 
   const below = data?.between.below ?? null;
@@ -337,7 +360,7 @@ export function Comparateur() {
             </div>
           </div>
 
-          <div className="mt-4 grid items-end gap-4 sm:grid-cols-[minmax(0,200px)_auto_auto]">
+          <div className="mt-4 grid items-end gap-4 sm:grid-cols-[minmax(0,220px)_auto]">
             <label className="block">
               <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Bonus annuel <span className="font-normal text-slate-soft">(opt.)</span></span>
               <div className="flex items-center rounded-xl border border-line bg-white px-3 transition focus-within:border-[#c7b6f2] focus-within:shadow-[0_0_0_4px_rgba(124,58,237,.08)]">
@@ -346,10 +369,6 @@ export function Comparateur() {
                 <span className="shrink-0 pl-2 text-[13px] font-medium text-slate-soft">€</span>
               </div>
             </label>
-            <div>
-              <span className="mb-1.5 block text-[12.5px] font-semibold text-slate">Comparer avec</span>
-              <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
-            </div>
             <button type="submit" disabled={!valid}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-[15px] font-semibold text-ink shadow-[0_14px_30px_-12px_rgba(0,195,137,.6)] transition hover:-translate-y-px hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50">
               {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Compass className="h-4 w-4" />}
@@ -357,16 +376,23 @@ export function Comparateur() {
             </button>
           </div>
 
-          {/* Comparer à un métier (autocomplétion) */}
-          <div className="mt-4 border-t border-line/60 pt-4">
-            <button type="button" onClick={() => setProOpen((v) => !v)} className="flex items-center gap-2 text-[13px] font-semibold text-slate transition hover:text-ink">
-              <Briefcase className="h-4 w-4 text-[#6D28D9]" /> Je veux me comparer à un métier
-              <ChevronDown className={`h-4 w-4 transition-transform ${proOpen ? "rotate-180" : ""}`} />
+          {/* ===== Module : Comparer avec un métier précis ===== */}
+          <div className="mt-5 overflow-hidden rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white">
+            <button type="button" onClick={() => setProOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left md:px-5">
+              <span className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEE7FD] text-[#6D28D9]"><Briefcase className="h-[18px] w-[18px]" /></span>
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-extrabold text-ink">Comparer avec un métier précis</span>
+                  <span className="mt-0.5 block text-[12.5px] text-slate">Choisissez un métier, puis affinez avec la ville ou l’expérience si les données existent.</span>
+                </span>
+              </span>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-[#6D28D9] transition-transform ${proOpen ? "rotate-180" : ""}`} />
             </button>
+
             {proOpen && (
-              <div className="cjv-drop mt-3">
-                <div className="relative max-w-[420px]">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-soft"><Search className="h-4 w-4" /></span>
+              <div className="cjv-drop border-t border-[#E3DAFB] px-4 py-4 md:px-5">
+                <div className="relative max-w-[460px]">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6D28D9]"><Search className="h-[18px] w-[18px]" /></span>
                   <input value={profession} autoFocus
                     onChange={(e) => setProfession(e.target.value)}
                     onKeyDown={(e) => {
@@ -375,14 +401,14 @@ export function Comparateur() {
                       else if (e.key === "Enter") { e.preventDefault(); if (sugg[hi]) selectMetier(sugg[hi].name); }
                       else if (e.key === "Escape") { setSugg([]); }
                     }}
-                    placeholder="ex. Data scientist, Trader, Médecin…"
-                    className="w-full rounded-xl border border-line bg-white py-2.5 pl-9 pr-3 text-[14px] font-medium text-ink outline-none transition focus:border-[#c7b6f2] focus:shadow-[0_0_0_4px_rgba(124,58,237,.08)] placeholder:font-normal placeholder:text-slate-soft" />
+                    placeholder="Rechercher un métier de référence…"
+                    className="w-full rounded-xl border border-[#D9CFFA] bg-white py-3 pl-11 pr-3 text-[14.5px] font-medium text-ink shadow-sm outline-none transition focus:border-[#b79df0] focus:shadow-[0_0_0_4px_rgba(124,58,237,.1)] placeholder:font-normal placeholder:text-slate-soft" />
                   {sugg.length > 0 && (
                     <ul className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(5,9,24,.5)]">
                       {sugg.map((s, i) => (
                         <li key={s.slug + i}>
                           <button type="button" onMouseEnter={() => setHi(i)} onClick={() => selectMetier(s.name)}
-                            className={`flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition ${i === hi ? "bg-surface" : "bg-white"}`}>
+                            className={`flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition ${i === hi ? "bg-[#F4EFFE]" : "bg-white"}`}>
                             <span className="min-w-0">
                               <span className="block truncate text-[14px] font-semibold text-ink">{s.name}</span>
                               <span className="block truncate text-[11.5px] text-slate-soft">{s.category}</span>
@@ -394,36 +420,39 @@ export function Comparateur() {
                     </ul>
                   )}
                 </div>
-                <p className="mt-2 text-[11.5px] text-slate-soft">Suggestions issues de la base — accents et fautes simples tolérés.</p>
-              </div>
-            )}
+                <p className="mt-2 text-[11.5px] text-slate-soft">Suggestions immédiates issues de la base — accents et fautes simples tolérés, pas besoin d’appuyer sur Entrée.</p>
 
-            {/* Filtres ville / expérience / spécialisation (uniquement si plusieurs variantes réelles) */}
-            {metierRef && (specs.length > 1 || cities.length > 1 || exps.length > 1) && (
-              <div className="mt-3 flex flex-wrap items-end gap-x-5 gap-y-3">
-                {specs.length > 1 && (
-                  <label className="block">
-                    <span className="mb-1 block text-[11.5px] font-semibold text-slate">Spécialisation</span>
-                    <select value={spec} onChange={(e) => setSpec(e.target.value)} className="rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink outline-none">
-                      {specs.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </label>
+                {/* Filtres (uniquement si plusieurs variantes réelles) */}
+                {metierRef && (specs.length > 1 || cities.length > 1 || exps.length > 1) && (
+                  <div className="mt-4 flex flex-wrap items-end gap-2.5">
+                    {specs.length > 1 && (
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-soft">Spécialisation</span>
+                        <select value={spec} onChange={(e) => setSpec(e.target.value)} className="rounded-xl border border-[#D9CFFA] bg-white px-3 py-2 text-[13px] font-semibold text-ink outline-none transition focus:border-[#b79df0]">
+                          {specs.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    {cities.length > 1 && (
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-soft">Ville</span>
+                        <select value={city} onChange={(e) => setCity(e.target.value)} className="rounded-xl border border-[#D9CFFA] bg-white px-3 py-2 text-[13px] font-semibold text-ink outline-none transition focus:border-[#b79df0]">
+                          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    {exps.length > 1 && (
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-soft">Expérience</span>
+                        <select value={exp} onChange={(e) => setExp(e.target.value)} className="rounded-xl border border-[#D9CFFA] bg-white px-3 py-2 text-[13px] font-semibold text-ink outline-none transition focus:border-[#b79df0]">
+                          {exps.map((x) => <option key={x} value={x}>{x}</option>)}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 )}
-                {cities.length > 1 && (
-                  <label className="block">
-                    <span className="mb-1 block text-[11.5px] font-semibold text-slate">Ville</span>
-                    <select value={city} onChange={(e) => setCity(e.target.value)} className="rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink outline-none">
-                      {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </label>
-                )}
-                {exps.length > 1 && (
-                  <label className="block">
-                    <span className="mb-1 block text-[11.5px] font-semibold text-slate">Expérience</span>
-                    <select value={exp} onChange={(e) => setExp(e.target.value)} className="rounded-xl border border-line bg-white px-3 py-2 text-[13px] font-medium text-ink outline-none">
-                      {exps.map((x) => <option key={x} value={x}>{x}</option>)}
-                    </select>
-                  </label>
+                {metierRef && refCalc && (
+                  <p className="mt-3 text-[13px] text-slate">Sélection : <b className="font-bold text-ink">{metierRef.name}</b>{refContext ? <span className="text-[#6D28D9]"> · {refContext}</span> : null} — <b className="font-bold text-ink">{refRange ? <>{euro(refCalc.min)} – {euro(refCalc.max)} €</> : <Money value={refCalc.central} per="an" />}</b></p>
                 )}
               </div>
             )}
@@ -455,18 +484,33 @@ export function Comparateur() {
               <div aria-hidden className="cjv-toolhalo" />
               <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-[#D9CFFA] bg-gradient-to-br from-[#F4EFFE] via-[#F8F5FF] to-white p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] md:p-8">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#D9CFFA] bg-white/70 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#6D28D9]"><Briefcase className="h-3.5 w-3.5" /> Vous comparez votre salaire avec {metierRef.name}</span>
-                {refContext && <p className="mt-3 text-[13.5px] font-semibold text-slate">Référence : {refContext}</p>}
-                <p className="mt-1 text-[14px] text-slate">Salaire de référence : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
-                <p className="mt-4 max-w-[660px] text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
-                  {refNear ? (<>Votre salaire est très proche de cette référence.</>)
-                    : refDiff > 0 ? (<>Il vous manque <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre cette référence.</>)
-                    : (<>Votre salaire est <span className="text-[#0A8F60]">{Math.abs(refPct)} %</span> au-dessus de cette référence.</>)}
+                {refContext && <p className="mt-3 text-[13.5px] font-semibold text-[#6D28D9]">{refContext}</p>}
+                <p className="mt-1 text-[14px] text-slate">Salaire estimé pour {metierLabel} : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
+                <p className="mt-4 max-w-[680px] text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
+                  {refNear ? (<>Votre salaire est très proche du niveau estimé pour {metierLabel}.</>)
+                    : refDiff > 0 ? (<>Il vous manque environ <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre le salaire de {metierLabel}{ctxSuffix ? ` ${ctxSuffix}` : ""}.</>)
+                    : (<>Vous êtes environ <span className="text-[#0A8F60]">{Math.abs(refPct)} %</span> au-dessus du salaire estimé pour {metierLabel}.</>)}
                 </p>
-                {!refNear && (<p className="mt-1.5 text-[14px] font-semibold text-slate">{refDiff > 0 ? `Soit environ ${Math.abs(refPct)} % de moins.` : `Soit ${diffLabel(-refDiff)} / an de plus.`}</p>)}
+                {!refNear && (
+                  <p className="mt-1.5 text-[14px] font-semibold text-slate">
+                    {refDiff > 0
+                      ? `Votre salaire est inférieur d'environ ${Math.abs(refPct)} % au niveau observé pour ${metierLabel}.`
+                      : `Soit ${diffLabel(-refDiff)} / an de plus que ce niveau.`}
+                  </p>
+                )}
                 <Link href={`/salaires?q=${encodeURIComponent(metierRef.name)}`} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-3 text-[14px] font-semibold text-white transition hover:-translate-y-px hover:bg-ink-soft">Voir la fiche de {metierRef.name} <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </section>
           )}
+
+          {/* ====== Type de comparaison (filtre clair, recalcul immédiat) ====== */}
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-2xl border border-line bg-white/80 px-4 py-3.5 backdrop-blur md:px-5">
+            <div className="min-w-0">
+              <span className="block text-[13.5px] font-bold text-ink">Comparer votre salaire avec :</span>
+              <span className="block text-[12px] text-slate">Choisissez de vous comparer à des métiers, à des personnalités, ou aux deux.</span>
+            </div>
+            <Seg<Kind> value={kind} onChange={setKind} options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
+          </div>
 
           {/* ====== Vous êtes entre… ====== */}
           <section className="cjv-toolwrap">
@@ -514,30 +558,60 @@ export function Comparateur() {
           {/* ====== Votre salaire sur l'échelle ====== */}
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
-            <div className="rounded-[32px] border border-line bg-white/90 p-6 shadow-[0_40px_100px_-50px_rgba(5,9,24,.55)] backdrop-blur md:p-10">
+            <div className="rounded-[32px] border border-line bg-white/90 p-6 shadow-[0_40px_100px_-50px_rgba(5,9,24,.55)] backdrop-blur md:p-9">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><Compass className="h-5 w-5" aria-hidden /></span>
-                  <h3 className="font-display text-[clamp(21px,3vw,30px)] font-extrabold tracking-[-0.015em] text-ink">Votre salaire sur l’échelle</h3>
+                  <h3 className="font-display text-[clamp(20px,2.8vw,28px)] font-extrabold tracking-[-0.015em] text-ink">Votre salaire sur l’échelle</h3>
                 </div>
-                {/* Ajouter un métier */}
+                {/* Ajouter un métier (champ compact + autocomplétion) */}
                 <div className="relative">
                   <button type="button" onClick={() => setAddOpen((v) => !v)} disabled={extra.length >= 3}
                     className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate transition hover:text-ink disabled:opacity-50">
                     <Plus className="h-3.5 w-3.5" /> Ajouter un métier
                   </button>
-                  {addOpen && (
-                    <div className="absolute right-0 z-30 mt-2 w-[230px] rounded-xl border border-line bg-white p-2 shadow-[0_24px_60px_-24px_rgba(5,9,24,.5)]">
-                      <div className="flex flex-wrap gap-1.5">
-                        {ADD_SUGGESTIONS.filter((m) => !extra.some((e) => e.name === m)).map((m) => (
-                          <button key={m} type="button" onClick={() => addMetier(m)} className="rounded-lg border border-line bg-white px-2.5 py-1 text-[12px] font-semibold text-slate transition hover:text-ink hover:shadow-soft">{m}</button>
-                        ))}
+                  {addOpen && extra.length < 3 && (
+                    <div className="absolute right-0 z-40 mt-2 w-[260px] rounded-2xl border border-line bg-white p-3 shadow-[0_24px_60px_-24px_rgba(5,9,24,.5)]">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-soft"><Search className="h-4 w-4" /></span>
+                        <input value={addQuery} autoFocus
+                          onChange={(e) => setAddQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowDown") { e.preventDefault(); setAddHi((h) => Math.min(h + 1, addSugg.length - 1)); }
+                            else if (e.key === "ArrowUp") { e.preventDefault(); setAddHi((h) => Math.max(h - 1, 0)); }
+                            else if (e.key === "Enter") { e.preventDefault(); if (addSugg[addHi]) addMetier(addSugg[addHi].name); }
+                            else if (e.key === "Escape") { setAddOpen(false); }
+                          }}
+                          placeholder="Ajouter un métier à l’échelle…"
+                          className="w-full rounded-xl border border-line bg-white py-2 pl-9 pr-3 text-[13.5px] font-medium text-ink outline-none transition focus:border-[#c7b6f2] focus:shadow-[0_0_0_3px_rgba(124,58,237,.08)] placeholder:font-normal placeholder:text-slate-soft" />
                       </div>
+                      {addSugg.length > 0 ? (
+                        <ul className="mt-2 max-h-[220px] overflow-auto">
+                          {addSugg.map((s, i) => (
+                            <li key={s.slug + i}>
+                              <button type="button" onMouseEnter={() => setAddHi(i)} onClick={() => addMetier(s.name)}
+                                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition ${i === addHi ? "bg-[#F4EFFE]" : "bg-white"}`}>
+                                <span className="block truncate text-[13px] font-semibold text-ink">{s.name}</span>
+                                <span className="shrink-0 text-[11.5px] font-bold text-slate-soft">{euro(s.salary)}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="mt-2">
+                          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-slate-soft">Populaires</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {ADD_SUGGESTIONS.slice(0, 5).filter((m) => !extra.some((e) => e.name === m)).map((m) => (
+                              <button key={m} type="button" onClick={() => addMetier(m)} className="rounded-lg border border-line bg-white px-2.5 py-1 text-[12px] font-semibold text-slate transition hover:text-ink hover:shadow-soft">{m}</button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
-              <p className="mt-2 text-[13.5px] text-slate">Équivalent brut annuel — survol pour le détail (brut / net), clic pour la fiche.{extra.length ? "" : " Ajoutez jusqu’à 3 métiers."}</p>
+              <p className="mt-2 text-[13.5px] text-slate">Repères clés en équivalent brut annuel — survolez un point pour le détail, cliquez pour la fiche.</p>
 
               {/* pills métiers ajoutés */}
               {extra.length > 0 && (
@@ -551,34 +625,36 @@ export function Comparateur() {
                 </div>
               )}
 
-              {/* échelle (large, épaisse, scroll mobile) */}
-              <div className="mt-28 overflow-x-auto pb-4">
-                <div className="relative mx-auto mb-28 min-w-[680px]">
-                  <div className="h-6 w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
+              {/* échelle : pleine largeur desktop (sans scroll souris), scroll horizontal mobile uniquement */}
+              <div className="mt-24 overflow-x-auto pb-3 md:mt-28 md:overflow-x-visible">
+                <div className="relative mx-auto mb-24 min-w-[560px] md:mb-28 md:min-w-0">
+                  <div className="h-[22px] w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
                   {/* repères fixes + métier comparé + ajoutés */}
                   {(() => {
-                    const pts: { label: string; pos: number; tip: string; q?: string; kind: "fix" | "metier" | "extra" }[] = [
-                      ...SCALE_FIXED.map((s) => ({ ...s, kind: "fix" as const })),
-                    ];
-                    if (metierRef && refCalc) pts.push({ label: metierRef.name, pos: refCalc.central, tip: `${refContext ? refContext + " — " : ""}${refRange ? `${euro(refCalc.min)} – ${euro(refCalc.max)}` : euro(refCalc.central)} / an`, q: metierRef.name, kind: "metier" });
-                    extra.forEach((e) => pts.push({ label: e.name, pos: e.salary, tip: `${euro(e.salary)} / an`, q: e.name, kind: "extra" }));
+                    type Pt = { label: string; pos: number; lines: string[]; q?: string; kind: "fix" | "metier" | "extra" };
+                    const pts: Pt[] = SCALE_FIXED.map((s) => ({ label: s.label, pos: s.pos, lines: [s.tip], q: s.q, kind: "fix" as const }));
+                    if (metierRef && refCalc) pts.push({ label: metierRef.name, pos: refCalc.central, lines: [refContext, `${refRange ? `${euro(refCalc.min)} – ${euro(refCalc.max)}` : euro(refCalc.central)} / an`].filter(Boolean), q: metierRef.name, kind: "metier" });
+                    extra.forEach((e) => pts.push({ label: e.name, pos: e.salary, lines: [`${euro(e.salary)} / an`], q: e.name, kind: "extra" }));
                     return pts.sort((a, b) => a.pos - b.pos).map((m, idx) => {
                       const left = scalePos(m.pos);
                       const Tag: any = m.q ? Link : "div";
                       const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
                       const lower = idx % 2 === 1;
-                      const edge = left < 12 ? "l" : left > 88 ? "r" : "c";
+                      const edge = left < 13 ? "l" : left > 87 ? "r" : "c";
                       const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
-                      const arrPos = edge === "l" ? "left-3" : edge === "r" ? "right-3" : "left-1/2 -translate-x-1/2";
-                      const dot = m.kind === "metier" ? "bg-[#7C3AED] ring-2 ring-[#7C3AED]/30" : m.kind === "extra" ? "bg-[#2F6BFF]" : m.q ? "bg-[#7C3AED]" : "bg-slate-soft";
+                      const arrPos = edge === "l" ? "left-4" : edge === "r" ? "right-4" : "left-1/2 -translate-x-1/2";
+                      const dot = m.kind === "metier" ? "bg-[#7C3AED] ring-4 ring-[#7C3AED]/25" : m.kind === "extra" ? "bg-[#2F6BFF]" : m.q ? "bg-[#7C3AED]" : "bg-slate-soft";
                       const lblColor = m.kind === "metier" ? "text-[#6D28D9] font-bold" : m.kind === "extra" ? "text-[#2F6BFF]" : m.q ? "text-[#6D28D9]" : "text-slate";
                       return (
                         <Tag key={`${m.label}-${idx}`} {...tagProps} className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-[70]" style={{ left: `${left}%` }}>
-                          <span className={`block h-5 w-5 rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.4] ${dot}`} />
+                          <span className={`block h-[18px] w-[18px] rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.45] ${dot}`} />
                           <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12.5px] font-semibold ${lblColor} ${lower ? "top-8" : "bottom-8"}`}>{m.label}</span>
-                          <span className={`pointer-events-none absolute bottom-[44px] z-[80] whitespace-nowrap rounded-xl bg-ink px-3.5 py-2.5 text-[13px] font-bold text-white opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
-                            {m.label} — {m.tip}
+                          <span className={`pointer-events-none absolute bottom-[46px] z-[80] w-max max-w-[220px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
+                            <span className="block text-[13px] font-extrabold text-white">{m.label}</span>
+                            {m.lines.map((ln, k) => (
+                              <span key={k} className={`block ${k === m.lines.length - 1 ? "mt-0.5 text-[12.5px] font-bold text-white" : "text-[11.5px] font-medium text-white/70"}`}>{ln}</span>
+                            ))}
                             <span aria-hidden className={`absolute top-full h-2.5 w-2.5 -translate-y-1.5 rotate-45 bg-ink ${arrPos}`} />
                           </span>
                         </Tag>
@@ -587,14 +663,14 @@ export function Comparateur() {
                   })()}
 
                   {/* marqueur utilisateur */}
-                  <div className="cjv-pin absolute -top-[68px] z-40 flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
-                    <span className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-extrabold text-ink shadow-[0_8px_22px_-6px_rgba(0,195,137,.9)]">Vous êtes ici</span>
-                    <span className="cjv-pin-dot mt-1.5 h-6 w-6 rounded-full border-[3px] border-white bg-brand shadow-[0_2px_12px_rgba(0,195,137,.8)]" />
+                  <div className="cjv-pin absolute -top-[66px] z-40 flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
+                    <span className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-extrabold text-ink shadow-[0_8px_22px_-6px_rgba(0,195,137,.9)]">Vous · {euro(shownAnnual)}</span>
+                    <span className="cjv-pin-dot mt-1.5 h-[22px] w-[22px] rounded-full border-[3px] border-white bg-brand shadow-[0_2px_12px_rgba(0,195,137,.8)]" />
                   </div>
                 </div>
               </div>
 
-              <p className="text-[12px] text-slate-soft">Repères : SMIC, médian, métier comparé, Trader, Médecin, Stars (+ vos métiers). Positionnés en équivalent brut.</p>
+              <p className="text-[12px] text-slate-soft">Repères : SMIC · Salaire médian · Métier comparé · Trader · Médecin · Stars (+ vos métiers ajoutés). Échelle en équivalent brut.</p>
             </div>
           </section>
 
