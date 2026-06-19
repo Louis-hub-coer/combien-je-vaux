@@ -141,7 +141,6 @@ export function SalarySearch() {
   useEffect(() => {
     const initial = new URLSearchParams(window.location.search).get("q") ?? "";
     if (initial) setQ(initial);
-    else inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -218,10 +217,10 @@ export function SalarySearch() {
               aria-label="Rechercher un salaire"
               className="min-w-0 flex-1 bg-transparent font-medium leading-normal text-ink outline-none placeholder:text-transparent [&::-webkit-search-cancel-button]:appearance-none"
             />
-            {q === "" && !focused && (
+            {q === "" && (
               <span className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap">
                 <span className={reduceTyped ? "text-slate-soft" : "font-medium text-ink"}>{typed || PLACEHOLDER}</span>
-                {!reduceTyped && typed !== "" && <span className="cjv-caret" />}
+                {!reduceTyped && typed !== "" && !focused && <span className="cjv-caret" />}
               </span>
             )}
           </span>
