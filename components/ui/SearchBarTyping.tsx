@@ -6,14 +6,22 @@ import { useEffect, useRef, useState } from "react";
 import { SALARY_SEARCH_PLACEHOLDER } from "@/lib/constants";
 
 const EXAMPLES = [
-  "Trader Goldman Sachs",
-  "Professeur de français",
   "Mbappé",
-  "Emmanuel Macron",
   "IShowSpeed",
-  "Cardiologue libéral",
-  "Data scientist Google Paris",
+  "Cristiano Ronaldo",
+  "Lionel Messi",
+  "Taylor Swift",
   "Matt Damon",
+  "Trader",
+  "Cardiologue",
+  "Data scientist",
+  "Prof de sport",
+  "Contrôleur SNCF",
+  "ASVP",
+  "Boulanger",
+  "Éboueur",
+  "Maire",
+  "Ministre",
 ];
 
 export function SearchBarTyping() {

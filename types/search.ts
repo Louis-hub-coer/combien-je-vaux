@@ -28,8 +28,9 @@ export interface SearchParams {
   limit?: number;
 }
 
-/** Une variante du même métier+entreprise : ville × tranche d'expérience. */
+/** Une variante du même métier : specialisation × ville × tranche d'expérience. */
 export interface GroupVariant {
+  specialization: string;
   city: string;
   country: string;
   experience: string;

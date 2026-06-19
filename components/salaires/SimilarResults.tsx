@@ -2,21 +2,11 @@
 
 import { ChevronRight } from "lucide-react";
 import type { SearchResultItem } from "@/types/search";
+import { formatEuro, broadCategory } from "@/lib/display";
 import { sectorVisual } from "./BestResultCard";
 
-const FMT = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
-function eur(n: number) {
-  return `${FMT.format(Math.round(n))} €`;
-}
 function cleanName(s: string) {
   return s.replace(/^salaires?\s+/i, "").trim() || s;
-}
-function subtitle(it: SearchResultItem) {
-  const parts =
-    it.type === "personne_nom"
-      ? [it.subCategory || it.category, it.country]
-      : [it.company, it.city || it.country];
-  return parts.filter(Boolean).join(" · ");
 }
 
 export function SimilarResults({
@@ -35,8 +25,8 @@ export function SimilarResults({
       </h3>
       <div className="flex flex-col gap-3">
         {items.slice(0, 5).map((it) => {
-          const name = cleanName(it.displayName);
-          const sub = subtitle(it);
+          const name = cleanName(it.displayName); // titre générique (nom)
+          const sub = broadCategory(it); // sous-titre générique (catégorie large)
           const sv = sectorVisual(it);
           return (
             <button
@@ -53,13 +43,13 @@ export function SimilarResults({
 
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14.5px] font-semibold leading-snug text-ink">{name}</span>
-                {sub && <span className="mt-1 block truncate text-[12.5px] leading-relaxed text-slate">{sub}</span>}
+                <span className="mt-1 block truncate text-[12.5px] leading-relaxed text-slate">{sub}</span>
               </span>
 
               <span className="flex shrink-0 items-center gap-1.5 self-center">
-                <span className="whitespace-nowrap text-[14px] font-bold text-ink [font-variant-numeric:tabular-nums]">
-                  {it.salaryTotalEur ? eur(it.salaryTotalEur) : "—"}
-                  <span className="ml-1 font-normal text-slate-soft">/ an</span>
+                <span className="whitespace-nowrap text-[14px] font-bold text-ink [font-variant-numeric:tabular-nums]" style={{ wordSpacing: "0.12em" }}>
+                  {it.salaryTotalEur != null ? formatEuro(it.salaryTotalEur) : "—"}
+                  <span className="ml-1 font-normal text-slate-soft" style={{ wordSpacing: "normal" }}>/ an</span>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-soft transition group-hover:translate-x-0.5 group-hover:text-ink" />
               </span>

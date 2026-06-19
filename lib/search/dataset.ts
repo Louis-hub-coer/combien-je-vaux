@@ -87,7 +87,7 @@ export interface Dataset {
 
 export const CSV_PATH =
   process.env.SALARY_CSV_PATH ??
-  path.join(process.cwd(), "data", "salary_master_33000_claude_ready_minimal.csv");
+  path.join(process.cwd(), "data", "salary_master_33000_full_audited_v1.csv");
 
 export const INDEX_PATH =
   process.env.SALARY_INDEX_PATH ?? path.join(process.cwd(), "data", "search-index.json");

@@ -12,6 +12,8 @@ import {
   Stethoscope,
   Landmark,
   Building2,
+  Dumbbell,
+  Cpu,
   type LucideIcon,
 } from "lucide-react";
 
@@ -109,11 +111,12 @@ export const searchTypes: SearchType[] = [
 export type SearchExample = { label: string; color: string; icon: LucideIcon };
 
 export const searchExamples: SearchExample[] = [
-  { label: "Trader Goldman Sachs", color: palette.violet.color, icon: Briefcase },
-  { label: "Médecin libéral cardiologue", color: palette.cyan.color, icon: Stethoscope },
-  { label: "Data scientist Google Paris", color: palette.green.color, icon: Building2 },
-  { label: "Salaire Mbappé", color: palette.coral.color, icon: Star },
-  { label: "Salaire Emmanuel Macron", color: palette.blue.color, icon: Landmark },
+  { label: "Mbappé", color: palette.coral.color, icon: Star },
+  { label: "IShowSpeed", color: palette.coral.color, icon: Star },
+  { label: "Trader", color: palette.violet.color, icon: Briefcase },
+  { label: "Cardiologue", color: palette.cyan.color, icon: Stethoscope },
+  { label: "Prof de sport", color: palette.green.color, icon: Dumbbell },
+  { label: "Data scientist", color: palette.blue.color, icon: Cpu },
 ];
 
 /** Mots qui défilent dans l'accroche (conservé pour réutilisation éventuelle). */

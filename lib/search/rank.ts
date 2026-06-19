@@ -28,6 +28,8 @@ const SYNONYMS: Record<string, string[]> = {
   professeur: ["professeur", "prof"],
   sport: ["sport", "sportif", "sportive", "eps"],
   medecin: ["medecin", "docteur", "praticien"],
+  associate: ["associate", "analyste"],
+  analyste: ["analyste", "analyst", "associate"],
 };
 
 // Déclencheurs d'intention « finance / marchés ».
@@ -58,7 +60,7 @@ export function buildContext(normalizedQuery: string): QueryContext {
 
 /** Score d'un enregistrement ; 0 = non candidat. */
 export function scoreRecord(r: IndexedRecord, ctx: QueryContext): { score: number; matchType: MatchType } {
-  const { qNorm, concepts, expanded, financeIntent } = ctx;
+  const { qNorm, qTokens, concepts, expanded, financeIntent } = ctx;
 
   const inHay = qNorm.length > 0 && r.haystack.includes(qNorm);
   let covered = 0;
@@ -90,6 +92,14 @@ export function scoreRecord(r: IndexedRecord, ctx: QueryContext): { score: numbe
   score += Math.min(r.priority, 125) * 0.7; // search_priority (0..125)
   if (r.isDefault) score += 90;             // remplace verification_status
 
+  // Boost : le métier générique recherché est ENTIÈREMENT contenu dans la requête
+  // (ex. « trader goldman sachs » -> « Trader » ; « data scientist google paris » -> « Data scientist »).
+  if (!r.isPerson && r.jobTokens.size > 0) {
+    let jobFull = true;
+    for (const t of r.jobTokens) if (!expanded.has(t)) { jobFull = false; break; }
+    if (jobFull) { score += 500; if (matchType === "coverage") matchType = "job_company"; }
+  }
+
   // Pénalité : entreprise présente mais NON demandée (métiers uniquement, pas les personnes).
   if (!r.isPerson && r.companyTokens.size > 0 && !compHit) {
     score -= 150;
@@ -99,8 +109,19 @@ export function scoreRecord(r: IndexedRecord, ctx: QueryContext): { score: numbe
   // Boost secteur : intention finance + catégorie finance.
   if (financeIntent && r.isFinance) score += 220;
 
+  // Garde-fou personnalités : une perso ne l'emporte que si une part suffisante des mots
+  // de la requête correspond à SON NOM (évite « Paris Hilton » pour « data scientist google paris »,
+  // ou « Black M » pour « associate m&a lazard »). N'affecte pas les recherches d'1 seul mot.
+  let personWeak = false;
+  if (r.isPerson && qTokens.length >= 2) {
+    const nameToks = new Set(r.nameNorm.split(" ").filter(Boolean));
+    let matched = 0;
+    for (const t of qTokens) if (nameToks.has(t)) matched++;
+    if (matched / qTokens.length < 0.5) { score -= 650; personWeak = true; }
+  }
+
   // Notoriété d'une personnalité via le salaire (Kylian ≫ Ethan Mbappé).
-  if (r.isPerson && r.salaryTotalEur && r.salaryTotalEur > 0) {
+  if (r.isPerson && !personWeak && r.salaryTotalEur && r.salaryTotalEur > 0) {
     score += clamp(Math.log10(r.salaryTotalEur) - 5, 0, 4) * 60;
   }
 

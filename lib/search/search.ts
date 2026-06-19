@@ -285,14 +285,16 @@ function groupVariantsFor(
   const byKey = new Map<string, IndexedRecord>();
   for (const r of group) {
     if (r.salaryTotalEur == null) continue;
+    const specKey = (r.specialization || "").trim().toLowerCase();
     const cityKey = (r.city || r.country || "").trim().toLowerCase();
     const xp = (r.experience ?? "").trim();
-    const key = `${cityKey}|${xp}`;
+    const key = `${specKey}|${cityKey}|${xp}`;
     const cur = byKey.get(key);
     if (!cur || (r.isDefault && !cur.isDefault)) byKey.set(key, r);
   }
   return [...byKey.values()]
     .map((r) => ({
+      specialization: r.specialization.trim(),
       city: r.city,
       country: r.country,
       experience: r.experience.trim(),
@@ -301,5 +303,5 @@ function groupVariantsFor(
       salaryVariableEur: r.salaryVariableEur,
       isDefault: r.isDefault,
     }))
-    .slice(0, 120);
+    .slice(0, 200);
 }

@@ -19,10 +19,10 @@ const PLACEHOLDER = "Tapez un métier, une entreprise ou une personnalité…";
 const SUGGESTIONS: { label: string; icon: LucideIcon; color: string; tint: string }[] = [
   { label: "Mbappé", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
   { label: "IShowSpeed", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
-  { label: "Trader Goldman Sachs", icon: Briefcase, color: "#7C3AED", tint: "#EEE7FD" },
-  { label: "Cardiologue libéral", icon: Stethoscope, color: "#06B6D4", tint: "#DEF7FB" },
+  { label: "Trader", icon: Briefcase, color: "#7C3AED", tint: "#EEE7FD" },
+  { label: "Cardiologue", icon: Stethoscope, color: "#06B6D4", tint: "#DEF7FB" },
   { label: "Prof de sport", icon: Dumbbell, color: "#00C389", tint: "#E1F7EF" },
-  { label: "Data scientist Google Paris", icon: Cpu, color: "#2F6BFF", tint: "#EAF1FF" },
+  { label: "Data scientist", icon: Cpu, color: "#2F6BFF", tint: "#EAF1FF" },
 ];
 
 const CATEGORIES: { label: string; icon: LucideIcon; color: string; tint: string; query: string }[] = [
@@ -206,7 +206,7 @@ export function SalarySearch() {
               </button>
             </div>
             <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,1fr)]">
-              <BestResultCard key={resp.best.id} item={resp.best} fallbackUsed={resp.fallbackUsed} />
+              <BestResultCard key={resp.best.id} item={resp.best} fallbackUsed={resp.fallbackUsed} query={submitted} />
               <SimilarResults items={resp.results} onPick={pick} />
             </div>
           </div>
