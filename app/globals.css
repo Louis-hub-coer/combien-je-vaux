@@ -347,3 +347,11 @@
   .cjv-in-left, .cjv-in-right, .cjv-you { animation: none; }
   .cjv-you-glow, .cjv-drift-a, .cjv-drift-b, .cjv-drift-c { animation: none; }
 }
+
+/* Trajectoires & particules d'arrière-plan (comparateur) */
+@keyframes cjvDash { to { stroke-dashoffset: -1200; } }
+.cjv-trace { stroke-dasharray: 10 16; animation: cjvDash 26s linear infinite; }
+.cjv-trace-2 { stroke-dasharray: 6 20; animation: cjvDash 34s linear infinite reverse; }
+@keyframes cjvTwinkle { 0%,100% { opacity: .25; transform: translateY(0); } 50% { opacity: .8; transform: translateY(-8px); } }
+.cjv-spark { animation: cjvTwinkle 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cjv-trace, .cjv-trace-2, .cjv-spark { animation: none; } }
