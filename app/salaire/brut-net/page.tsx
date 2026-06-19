@@ -41,7 +41,7 @@ export default function BrutNetPage() {
             </span>
             Outil salaire
           </span>
-          <h1 className="mx-auto max-w-[760px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
+          <h1 className="mx-auto max-w-[680px] text-balance text-[clamp(32px,5.2vw,56px)] font-extrabold leading-[1.06] tracking-[-0.032em] text-ink">
             <BrutNetTitleSwap />
           </h1>
           <p className="mx-auto mt-5 max-w-[580px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">

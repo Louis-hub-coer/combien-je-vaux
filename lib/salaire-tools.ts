@@ -42,7 +42,7 @@ export const salaireTools: SalaireTool[] = [
     icon: Scale,
     color: "#7C3AED",
     tint: "#EEE7FD",
-    ready: true,
+    ready: false,
   },
   {
     key: "brut-net",
