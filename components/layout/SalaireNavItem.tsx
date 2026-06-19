@@ -37,7 +37,7 @@ export function SalaireNavItem({ label }: { label: string }) {
 
       {open && (
         <div className="absolute left-1/2 top-full z-[70] -translate-x-1/2 pt-3">
-          <div className="cjv-drop w-[368px] rounded-2xl border border-line bg-white/95 p-2 shadow-[0_24px_60px_-22px_rgba(5,9,24,.45)] backdrop-blur-md">
+          <div className="cjv-drop w-[368px] rounded-2xl border border-line bg-white p-2 shadow-[0_24px_60px_-22px_rgba(5,9,24,.45)]">
             {salaireTools.map((t) => {
               const Icon = t.icon;
               return (
