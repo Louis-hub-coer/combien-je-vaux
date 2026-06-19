@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SearchBarTyping } from "@/components/ui/SearchBarTyping";
+import { HeroRotatingTitle } from "./HeroRotatingTitle";
 import { Bento } from "./Bento";
 import { searchExamples } from "@/lib/constants";
 
@@ -45,21 +46,14 @@ export function SearchHero() {
           Où vous situez-vous vraiment&nbsp;?
         </span>
 
-        <h1
-          className="reveal mx-auto mt-5 max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em]"
-          style={{ "--d": ".06s" } as CSSVars}
-        >
-          Cherchez le salaire de
-          <br />
-          <span className="hl">n&apos;importe qui</span>.
-        </h1>
+        <HeroRotatingTitle />
 
         <p
           className="reveal mx-auto mt-5 max-w-[560px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate"
           style={{ "--d": ".12s" } as CSSVars}
         >
-          Trader, cardiologue, Mbappé ou data scientist chez Google : trouvez n&apos;importe
-          quel salaire et comparez-vous à la France entière.
+          Trader, cardiologue, Mbappé ou data scientist : trouvez n&apos;importe quel
+          salaire et comparez-vous à la France entière.
         </p>
 
         {/* Recherche centrale */}

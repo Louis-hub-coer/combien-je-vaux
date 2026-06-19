@@ -18,6 +18,10 @@ import {
 export type Status = "cadre" | "non-cadre";
 export type Period = "mensuel" | "annuel";
 export type TaxMode = "pas" | "bareme";
+export type Contract = "cdi" | "cdd" | "interim" | "stage" | "alternance";
+
+/** Stage et alternance : gratification / salaire largement exonérés de cotisations. */
+const EXEMPT_CONTRACTS: Contract[] = ["stage", "alternance"];
 
 export interface NormalizeInput {
   amount: number;
@@ -29,6 +33,7 @@ export interface NormalizeInput {
 
 export interface ComputeOptions {
   status: Status;
+  contract?: Contract; // défaut cdi ; stage/alternance -> cotisations exonérées
   mutuelleMonthly?: number;
   ticketsRestoMonthly?: number; // part salarié (déduite du net)
   parts?: number; // quotient familial (défaut 1)
@@ -135,10 +140,15 @@ export function calculateEmployerCost(grossAnnual: number, status: Status): numb
 /** Calcul complet à partir d'un brut ANNUEL déjà normalisé. */
 function computeFromGrossAnnual(grossAnnual: number, opts: ComputeOptions): BrutNetResult {
   const status = opts.status;
+  const contract = opts.contract ?? "cdi";
+  const exempt = EXEMPT_CONTRACTS.includes(contract);
   const mutuelleAnnual = (opts.mutuelleMonthly ?? 0) * 12;
   const ticketsAnnual = (opts.ticketsRestoMonthly ?? 0) * 12;
 
-  const empC = calculateEmployeeContributions(grossAnnual, status);
+  // Stage / alternance : cotisations salariales et patronales considérées exonérées.
+  const empC = exempt
+    ? { amount: 0, rate: 0 }
+    : calculateEmployeeContributions(grossAnnual, status);
   const netBeforeTaxAnnual = Math.max(0, grossAnnual - empC.amount - mutuelleAnnual - ticketsAnnual);
 
   // Assiette imposable : net avant impôt + CSG/CRDS non déductible, puis abattement 10 %.
@@ -161,7 +171,7 @@ function computeFromGrossAnnual(grossAnnual: number, opts: ComputeOptions): Brut
   }
 
   const netAfterTaxAnnual = Math.max(0, netBeforeTaxAnnual - incomeTaxAnnual);
-  const employerContributions = calculateEmployerContributions(grossAnnual, status);
+  const employerContributions = exempt ? 0 : calculateEmployerContributions(grossAnnual, status);
   const employerCostAnnual = grossAnnual + employerContributions;
 
   return {

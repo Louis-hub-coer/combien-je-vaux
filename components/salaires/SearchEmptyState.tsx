@@ -18,10 +18,10 @@ export function SearchEmptyState({
       ? `Aucun résultat pour « ${query} »`
       : "Commencez votre recherche";
   const text = isBlocked
-    ? "Essayez plutôt un métier, une entreprise ou une personnalité."
+    ? "Essayez plutôt un métier ou une personnalité."
     : isEmpty
       ? "Vérifiez l’orthographe ou essayez un intitulé plus simple — ou explorez un secteur ci-dessus."
-      : "Tapez un métier, une entreprise ou une personnalité, ou choisissez un exemple ci-dessus.";
+      : "Tapez un métier ou une personnalité, ou choisissez un exemple ci-dessus.";
 
   return (
     <div className="mx-auto max-w-[640px] rounded-3xl border border-dashed border-line bg-white/70 px-6 py-12 text-center backdrop-blur">

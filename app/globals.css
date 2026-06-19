@@ -260,3 +260,26 @@
 /* Animation des barres du graphique brut↔net */
 @keyframes cjvBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { [style*="cjvBar"] { animation: none !important; } }
+
+/* Barre de recherche homepage — halo qui respire + ligne de scan (discrets) */
+.cjv-iconglow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(0,195,137,.45), transparent 70%);
+  opacity: .5;
+}
+.cjv-scan {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 2px; width: 36%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #00C389, transparent);
+  opacity: 0;
+}
+@keyframes cjvIconGlow { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .85; transform: scale(1.14); } }
+@keyframes cjvScanX { 0% { transform: translateX(-60%); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateX(220%); opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .cjv-iconglow { animation: cjvIconGlow 3.4s ease-in-out infinite; }
+  .cjv-scan { animation: cjvScanX 5s ease-in-out infinite; }
+}

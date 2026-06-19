@@ -7,7 +7,7 @@ import { SalarySearch } from "@/components/salaires/SalarySearch";
 export const metadata: Metadata = {
   title: "Rechercher un salaire",
   description:
-    "Métiers, entreprises, personnalités : tapez une recherche et obtenez une estimation claire, avec les résultats proches.",
+    "Métiers, personnalités, secteurs : tapez une recherche et obtenez une estimation claire, avec les résultats proches.",
 };
 
 export default function SalairesPage() {
@@ -79,7 +79,7 @@ export default function SalairesPage() {
             Rechercher <span className="hl">un salaire</span>
           </h1>
           <p className="mx-auto mt-5 max-w-[560px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
-            Métiers, entreprises, personnalités : tapez une recherche et obtenez une
+            Métiers, personnalités, secteurs : tapez une recherche et obtenez une
             estimation claire, avec les résultats proches.
           </p>
         </header>

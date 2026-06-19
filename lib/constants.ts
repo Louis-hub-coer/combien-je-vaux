@@ -46,7 +46,7 @@ export type ValueProp = { title: string; text: string; icon: LucideIcon } & Swat
 export const valueProps: ValueProp[] = [
   {
     title: "Cherchez",
-    text: "Le salaire d'un métier, d'une entreprise ou d'une célébrité.",
+    text: "Le salaire d'un métier ou d'une personnalité.",
     icon: Search,
     ...palette.cyan,
   },
@@ -96,14 +96,14 @@ export const featuredArticles: Article[] = [
 
 /** Placeholders du futur moteur de recherche de salaires (non branché en Phase 1). */
 export const SALARY_SEARCH_PLACEHOLDER =
-  "Rechercher un métier, une entreprise ou une personnalité…";
+  "Cherchez un métier ou une personnalité…";
 
 export type SearchType = { label: string; icon: LucideIcon };
 
 /** Ce que l'on peut chercher (rendu explicite sous la barre). */
 export const searchTypes: SearchType[] = [
   { label: "Un métier", icon: Briefcase },
-  { label: "Une entreprise", icon: Building2 },
+  { label: "Un secteur", icon: Building2 },
   { label: "Une célébrité", icon: Star },
   { label: "Un métier précis", icon: Stethoscope },
 ];

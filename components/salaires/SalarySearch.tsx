@@ -15,7 +15,7 @@ import { SearchEmptyState } from "./SearchEmptyState";
 
 type Status = "idle" | "loading" | "done" | "error";
 
-const PLACEHOLDER = "Tapez un métier, une entreprise ou une personnalité…";
+const PLACEHOLDER = "Tapez un métier ou une personnalité…";
 
 const SUGGESTIONS: { label: string; icon: LucideIcon; color: string; tint: string }[] = [
   { label: "Mbappé", icon: Star, color: "#FF4D67", tint: "#FFE5EA" },
