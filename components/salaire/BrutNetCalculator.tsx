@@ -146,7 +146,9 @@ export function BrutNetCalculator() {
   return (
     <div className="mx-auto max-w-[960px]">
       {/* ============ CARTE OUTIL PRINCIPALE ============ */}
-      <div className="rounded-[28px] border border-line bg-white/85 p-5 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-7">
+      <div className="cjv-toolwrap">
+        <div aria-hidden className="cjv-toolhalo" />
+        <div className="cjv-toolcard rounded-[28px] border border-line bg-white/85 p-5 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-7">
         {/* En-tête : modes + sens */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex rounded-2xl border border-line bg-surface p-1">
@@ -320,6 +322,7 @@ export function BrutNetCalculator() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Accordéon pédagogique (discret) */}

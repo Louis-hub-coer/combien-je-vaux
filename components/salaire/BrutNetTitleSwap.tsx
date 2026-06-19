@@ -2,9 +2,29 @@
 
 import { useEffect, useState } from "react";
 
-const PHRASES = ["brut en net", "net en brut"];
+/** Mot dynamique : alterne en fondu doux entre deux états (largeur réservée). */
+function SwapWord({ a, b, i, reduce }: { a: string; b: string; i: number; reduce: boolean }) {
+  const sizer = a.length >= b.length ? a : b;
+  return (
+    <span className="relative inline-block align-baseline">
+      <span className="invisible whitespace-nowrap">{sizer}</span>
+      {[a, b].map((w, idx) => (
+        <span
+          key={w}
+          className="hl whitespace-nowrap"
+          style={{ position: "absolute", inset: 0, transition: "opacity .6s ease", opacity: reduce ? (idx === 0 ? 1 : 0) : i === idx ? 1 : 0 }}
+        >
+          {w}
+        </span>
+      ))}
+    </span>
+  );
+}
 
-/** Partie dynamique du hero : alterne « brut en net » / « net en brut » (fondu doux). */
+/**
+ * « Convertissez votre {brut/net} en {net/brut} ».
+ * Seuls les deux mots alternent ; « Convertissez votre » et « en » restent fixes.
+ */
 export function BrutNetTitleSwap() {
   const [i, setI] = useState(0);
   const [reduce, setReduce] = useState(false);
@@ -15,31 +35,14 @@ export function BrutNetTitleSwap() {
       setReduce(true);
       return;
     }
-    const id = setInterval(() => setI((v) => (v + 1) % PHRASES.length), 3600);
+    const id = setInterval(() => setI((v) => (v + 1) % 2), 3800);
     return () => clearInterval(id);
   }, []);
 
   return (
     <>
-      Convertissez votre{" "}
-      <span className="relative inline-block align-baseline">
-        {/* Sizer invisible : réserve la largeur (les deux phrases ont la même longueur). */}
-        <span className="invisible whitespace-nowrap">brut en net</span>
-        {PHRASES.map((p, idx) => (
-          <span
-            key={p}
-            className="cjv-grad whitespace-nowrap"
-            style={{
-              position: "absolute",
-              inset: 0,
-              transition: "opacity .55s ease",
-              opacity: reduce ? (idx === 0 ? 1 : 0) : i === idx ? 1 : 0,
-            }}
-          >
-            {p}
-          </span>
-        ))}
-      </span>
+      Convertissez votre <SwapWord a="brut" b="net" i={i} reduce={reduce} /> en{" "}
+      <SwapWord a="net" b="brut" i={i} reduce={reduce} />
     </>
   );
 }
