@@ -1,18 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { salaireTools } from "@/lib/salaire-tools";
 
 /**
  * Entrée « Salaire » de la navbar : clic -> /salaire (hub), hover -> dropdown
- * premium des 4 outils. N'affecte que cette entrée ; le reste de la navbar
- * et les autres univers sont inchangés.
+ * premium des 4 outils. Se ferme au clic sur une entrée, au changement de route
+ * et au clic à l'extérieur.
  */
 export function SalaireNavItem({ label }: { label: string }) {
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   const show = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -23,10 +26,26 @@ export function SalaireNavItem({ label }: { label: string }) {
     timer.current = setTimeout(() => setOpen(false), 120);
   };
 
+  // Fermeture quand la route change (on arrive sur la nouvelle page).
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Fermeture au clic à l'extérieur.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
   return (
-    <div className="relative" onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}>
+    <div ref={rootRef} className="relative" onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}>
       <Link
         href="/salaire"
+        onClick={() => setOpen(false)}
         aria-haspopup="true"
         aria-expanded={open}
         className="inline-flex items-center gap-1 rounded-xl px-[13px] py-2 text-[14.5px] font-medium text-slate transition hover:bg-surface hover:text-ink"
@@ -44,6 +63,7 @@ export function SalaireNavItem({ label }: { label: string }) {
                 <Link
                   key={t.key}
                   href={t.href}
+                  onClick={() => setOpen(false)}
                   className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105" style={{ background: t.tint, color: t.color }}>

@@ -233,3 +233,30 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 .cjv-drop { animation: cjvDrop 0.16s ease-out; transform-origin: top center; }
+
+/* Hero /salaire/brut-net : titre dégradé shimmer + halos flottants (subtil) */
+@keyframes cjvShine { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+.cjv-grad {
+  position: relative; display: inline-block;
+  background: linear-gradient(100deg, #ff4d67 0%, #7c3aed 45%, #ff4d67 90%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: cjvShine 7s linear infinite;
+}
+.cjv-grad::after {
+  content: ""; position: absolute; z-index: -1; inset: 8% -7%;
+  background: radial-gradient(closest-side, rgba(255,77,103,.28), rgba(124,58,237,.16) 60%, transparent);
+  filter: blur(16px);
+}
+@keyframes cjvFloat1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(16px,-20px); } }
+@keyframes cjvFloat2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-18px,14px); } }
+.cjv-float-1 { animation: cjvFloat1 15s ease-in-out infinite; }
+.cjv-float-2 { animation: cjvFloat2 19s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cjv-grad, .cjv-float-1, .cjv-float-2 { animation: none; }
+}
+
+/* Animation des barres du graphique brut↔net */
+@keyframes cjvBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { [style*="cjvBar"] { animation: none !important; } }

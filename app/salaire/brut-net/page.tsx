@@ -15,6 +15,9 @@ export default function BrutNetPage() {
   return (
     <section className="relative overflow-hidden">
       <SalaireBackground />
+      {/* Halos flottants subtils (hero) */}
+      <div aria-hidden className="cjv-float-1 pointer-events-none absolute left-[8%] top-[-40px] -z-10 h-64 w-64 rounded-full blur-3xl" style={{ background: "rgba(0,195,137,.34)" }} />
+      <div aria-hidden className="cjv-float-2 pointer-events-none absolute right-[6%] top-[10px] -z-10 h-72 w-72 rounded-full blur-3xl" style={{ background: "rgba(124,58,237,.30)" }} />
 
       <Container className="relative py-8 md:py-12">
         <Link
@@ -30,7 +33,7 @@ export default function BrutNetPage() {
             Outil salaire
           </span>
           <h1 className="mx-auto max-w-[680px] text-balance text-[clamp(32px,5.2vw,56px)] font-extrabold leading-[1.06] tracking-[-0.032em] text-ink">
-            Convertissez votre <span className="hl">brut en net</span>
+            Convertissez votre <span className="cjv-grad">brut en net</span>
           </h1>
           <p className="mx-auto mt-5 max-w-[580px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
             Estimez votre net mensuel, votre net après impôt et le coût employeur en quelques secondes.
