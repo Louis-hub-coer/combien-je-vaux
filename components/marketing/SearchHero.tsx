@@ -52,8 +52,8 @@ export function SearchHero() {
           className="reveal mx-auto mt-5 max-w-[560px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate"
           style={{ "--d": ".12s" } as CSSVars}
         >
-          Trader, cardiologue, Mbappé ou data scientist : trouvez n&apos;importe quel
-          salaire et comparez-vous à la France entière.
+          Tapez un nom ou un métier, découvrez le revenu estimé et comparez-vous en
+          quelques secondes.
         </p>
 
         {/* Recherche centrale */}

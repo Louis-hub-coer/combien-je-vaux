@@ -19,8 +19,8 @@ interface CompareResponse {
   listBelow: Profile[];
   listAbove: Profile[];
 }
-interface MetierRef { name: string; slug: string; isPerson: boolean; category: string; variants: GroupVariant[]; }
-interface Suggestion { name: string; slug: string; salary: number; category: string; }
+interface MetierRef { name: string; slug: string; isPerson: boolean; category: string; variants: GroupVariant[]; baseSalary: number; }
+interface Suggestion { name: string; slug: string; salary: number; category: string; isPerson?: boolean; }
 
 const NBSP = "\u00A0";
 const FMT = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
@@ -167,9 +167,9 @@ export function Comparateur() {
     const best = await fetchBest(name);
     if (!best) return;
     const variants = (best.groupVariants ?? []).filter((v) => v.salaryTotalEur != null);
-    const ref: MetierRef = { name: best.displayName, slug: best.slug, isPerson: best.type === "personne_nom", category: broadCategory(best), variants };
+    const ref: MetierRef = { name: best.displayName, slug: best.slug, isPerson: best.type === "personne_nom", category: broadCategory(best), variants, baseSalary: best.salaryTotalEur ?? 0 };
     setMetierRef(ref);
-    setProOpen(false);
+    // On NE referme PAS le module : si des filtres existent, l'utilisateur doit pouvoir les choisir avant validation.
     setProfession("");
     setSugg([]);
     setHi(-1);
@@ -224,6 +224,11 @@ export function Comparateur() {
 
   const refCalc = useMemo(() => {
     if (!metierRef) return null;
+    // Personnalités (ou métiers sans variantes) : un seul salaire de référence.
+    if (!variants.length) {
+      if (!(metierRef.baseSalary > 0)) return null;
+      return { min: metierRef.baseSalary, max: metierRef.baseSalary, central: metierRef.baseSalary, count: 1 };
+    }
     const m = variants.filter((v) => v.salaryTotalEur != null
       && (!spec || v.specialization === spec)
       && (!city || (v.city || v.country) === city)
@@ -240,9 +245,10 @@ export function Comparateur() {
   const expDisp = exp || (exps.length === 1 ? exps[0] : "");
   const specDisp = spec || (specs.length === 1 ? specs[0] : "");
   const refContext = [specDisp, cityDisp, expDisp].filter(Boolean).join(" · ");
-  // Pour les phrases naturelles : "le salaire de Data scientist à Paris avec 5-10 ans d'expérience"
-  const metierLabel = metierRef?.name ?? "ce métier";
-  const ctxSuffix = [cityDisp ? `à ${cityDisp}` : "", expDisp ? `avec ${expDisp} d'expérience` : ""].filter(Boolean).join(" ");
+  // Phrases simples et robustes : on n'ajoute la ville que si elle est "parlante" (pas "France"), et jamais la tranche d'expérience brute.
+  const profileLabel = metierRef?.name ?? "ce profil";
+  const cityClean = cityDisp && !/^france$/i.test(cityDisp) ? cityDisp : "";
+  const cityPart = cityClean ? ` à ${cityClean}` : "";
 
   // ---- Lancer la comparaison ----
   const run = useCallback(async (annual: number, k: Kind) => {
@@ -257,9 +263,22 @@ export function Comparateur() {
     } catch { setStatus("error"); }
   }, []);
 
-  // Recalcule quand le filtre Métiers/Perso change (si déjà un résultat)
+  // Recalcule UNIQUEMENT le bloc "entre" + listes, sans toucher au statut (pas de saut de page).
+  const [kindLoading, setKindLoading] = useState(false);
+  const refetchBetween = useCallback(async (k: Kind) => {
+    if (!(shownAnnual > 0)) return;
+    setKindLoading(true);
+    try {
+      const res = await fetch(`/api/salaire/comparateur?annual=${shownAnnual}&kind=${k}`);
+      if (res.ok) setData((await res.json()) as CompareResponse);
+    } catch { /* on garde l'affichage courant */ } finally {
+      setKindLoading(false);
+    }
+  }, [shownAnnual]);
+
+  // Quand le filtre Métiers/Perso change (résultat déjà affiché) : recalcul ciblé, sans recharger.
   useEffect(() => {
-    if (status === "done" && shownAnnual > 0) run(shownAnnual, kind);
+    if (status === "done" && shownAnnual > 0) refetchBetween(kind);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
 
@@ -337,7 +356,7 @@ export function Comparateur() {
       )}
 
       {/* ---------- Carte formulaire ---------- */}
-      <div className="cjv-toolwrap">
+      <div className="cjv-toolwrap relative z-30">
         <div aria-hidden className="cjv-toolhalo" />
         <form onSubmit={(e) => { e.preventDefault(); run(comparableAnnual, kind); }}
           className="cjv-toolcard rounded-[28px] border border-line bg-white/85 p-5 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-7">
@@ -376,14 +395,14 @@ export function Comparateur() {
             </button>
           </div>
 
-          {/* ===== Module : Comparer avec un métier précis ===== */}
-          <div className="mt-5 overflow-hidden rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white">
+          {/* ===== Module : Comparer avec un métier ou une personnalité ===== */}
+          <div className="mt-5 rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white">
             <button type="button" onClick={() => setProOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left md:px-5">
               <span className="flex items-start gap-3">
                 <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EEE7FD] text-[#6D28D9]"><Briefcase className="h-[18px] w-[18px]" /></span>
                 <span className="min-w-0">
-                  <span className="block text-[15px] font-extrabold text-ink">Comparer avec un métier précis</span>
-                  <span className="mt-0.5 block text-[12.5px] text-slate">Choisissez un métier, puis affinez avec la ville ou l’expérience si les données existent.</span>
+                  <span className="block text-[15px] font-extrabold text-ink">Comparer avec un métier ou une personnalité</span>
+                  <span className="mt-0.5 block text-[12.5px] text-slate">Choisissez un métier ou une personnalité, puis affinez si des filtres sont disponibles.</span>
                 </span>
               </span>
               <ChevronDown className={`h-5 w-5 shrink-0 text-[#6D28D9] transition-transform ${proOpen ? "rotate-180" : ""}`} />
@@ -391,7 +410,7 @@ export function Comparateur() {
 
             {proOpen && (
               <div className="cjv-drop border-t border-[#E3DAFB] px-4 py-4 md:px-5">
-                <div className="relative max-w-[460px]">
+                <div className="relative z-50 max-w-[460px]">
                   <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6D28D9]"><Search className="h-[18px] w-[18px]" /></span>
                   <input value={profession} autoFocus
                     onChange={(e) => setProfession(e.target.value)}
@@ -401,17 +420,20 @@ export function Comparateur() {
                       else if (e.key === "Enter") { e.preventDefault(); if (sugg[hi]) selectMetier(sugg[hi].name); }
                       else if (e.key === "Escape") { setSugg([]); }
                     }}
-                    placeholder="Rechercher un métier de référence…"
+                    placeholder="Rechercher un métier ou une personnalité…"
                     className="w-full rounded-xl border border-[#D9CFFA] bg-white py-3 pl-11 pr-3 text-[14.5px] font-medium text-ink shadow-sm outline-none transition focus:border-[#b79df0] focus:shadow-[0_0_0_4px_rgba(124,58,237,.1)] placeholder:font-normal placeholder:text-slate-soft" />
                   {sugg.length > 0 && (
-                    <ul className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-line bg-white shadow-[0_24px_60px_-24px_rgba(5,9,24,.5)]">
+                    <ul className="absolute left-0 right-0 z-[60] mt-2 max-h-[296px] overflow-auto rounded-xl border border-line bg-white py-1 shadow-[0_24px_60px_-24px_rgba(5,9,24,.55)]">
                       {sugg.map((s, i) => (
                         <li key={s.slug + i}>
                           <button type="button" onMouseEnter={() => setHi(i)} onClick={() => selectMetier(s.name)}
-                            className={`flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition ${i === hi ? "bg-[#F4EFFE]" : "bg-white"}`}>
-                            <span className="min-w-0">
-                              <span className="block truncate text-[14px] font-semibold text-ink">{s.name}</span>
-                              <span className="block truncate text-[11.5px] text-slate-soft">{s.category}</span>
+                            className={`flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition ${i === hi ? "bg-[#F4EFFE]" : "bg-white hover:bg-surface"}`}>
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.isPerson ? "bg-[#FFE5EA] text-[#E11D48]" : "bg-[#E1F7EF] text-[#00A06E]"}`}>{s.isPerson ? "★" : "•"}</span>
+                              <span className="min-w-0">
+                                <span className="block truncate text-[14px] font-semibold text-ink">{s.name}</span>
+                                <span className="block truncate text-[11.5px] text-slate-soft">{s.isPerson ? "Personnalité" : s.category}</span>
+                              </span>
                             </span>
                             <span className="shrink-0 text-[12.5px] font-bold text-slate"><Money value={s.salary} per="an" /></span>
                           </button>
@@ -420,7 +442,7 @@ export function Comparateur() {
                     </ul>
                   )}
                 </div>
-                <p className="mt-2 text-[11.5px] text-slate-soft">Suggestions immédiates issues de la base — accents et fautes simples tolérés, pas besoin d’appuyer sur Entrée.</p>
+                <p className="mt-2 text-[11.5px] text-slate-soft">Métiers et personnalités — suggestions immédiates dès la frappe, cliquables, sans appuyer sur Entrée.</p>
 
                 {/* Filtres (uniquement si plusieurs variantes réelles) */}
                 {metierRef && (specs.length > 1 || cities.length > 1 || exps.length > 1) && (
@@ -485,17 +507,15 @@ export function Comparateur() {
               <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-[#D9CFFA] bg-gradient-to-br from-[#F4EFFE] via-[#F8F5FF] to-white p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] md:p-8">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#D9CFFA] bg-white/70 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#6D28D9]"><Briefcase className="h-3.5 w-3.5" /> Vous comparez votre salaire avec {metierRef.name}</span>
                 {refContext && <p className="mt-3 text-[13.5px] font-semibold text-[#6D28D9]">{refContext}</p>}
-                <p className="mt-1 text-[14px] text-slate">Salaire estimé pour {metierLabel} : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
+                <p className="mt-1 text-[14px] text-slate">Salaire estimé pour {profileLabel} : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
                 <p className="mt-4 max-w-[680px] text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
-                  {refNear ? (<>Votre salaire est très proche du niveau estimé pour {metierLabel}.</>)
-                    : refDiff > 0 ? (<>Il vous manque environ <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre le salaire de {metierLabel}{ctxSuffix ? ` ${ctxSuffix}` : ""}.</>)
-                    : (<>Vous êtes environ <span className="text-[#0A8F60]">{Math.abs(refPct)} %</span> au-dessus du salaire estimé pour {metierLabel}.</>)}
+                  {refNear ? (<>Votre salaire est très proche du niveau estimé pour {profileLabel}.</>)
+                    : refDiff > 0 ? (<>Il vous manque environ <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre le niveau estimé pour {profileLabel}{cityPart}.</>)
+                    : (<>Vous êtes environ <span className="text-[#0A8F60]"><Money value={Math.abs(refDiff)} per="an" /></span> au-dessus du niveau estimé pour {profileLabel}{cityPart}.</>)}
                 </p>
                 {!refNear && (
                   <p className="mt-1.5 text-[14px] font-semibold text-slate">
-                    {refDiff > 0
-                      ? `Votre salaire est inférieur d'environ ${Math.abs(refPct)} % au niveau observé pour ${metierLabel}.`
-                      : `Soit ${diffLabel(-refDiff)} / an de plus que ce niveau.`}
+                    {refDiff > 0 ? `Soit environ ${Math.abs(refPct)} % de moins que ce niveau.` : `Soit environ ${Math.abs(refPct)} % de plus que ce niveau.`}
                   </p>
                 )}
                 <Link href={`/salaires?q=${encodeURIComponent(metierRef.name)}`} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-3 text-[14px] font-semibold text-white transition hover:-translate-y-px hover:bg-ink-soft">Voir la fiche de {metierRef.name} <ArrowRight className="h-4 w-4" /></Link>
@@ -503,20 +523,19 @@ export function Comparateur() {
             </section>
           )}
 
-          {/* ====== Type de comparaison (filtre clair, recalcul immédiat) ====== */}
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-2xl border border-line bg-white/80 px-4 py-3.5 backdrop-blur md:px-5">
-            <div className="min-w-0">
-              <span className="block text-[13.5px] font-bold text-ink">Comparer votre salaire avec :</span>
-              <span className="block text-[12px] text-slate">Choisissez de vous comparer à des métiers, à des personnalités, ou aux deux.</span>
-            </div>
-            <Seg<Kind> value={kind} onChange={setKind} options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
-          </div>
-
-          {/* ====== Vous êtes entre… ====== */}
+          {/* ====== Vous êtes entre… (filtre Tout/Métiers/Personnalités intégré) ====== */}
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
             <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-line bg-white/90 p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-8">
-              <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-surface px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-slate"><ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Vous êtes entre…</span>
+              <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-surface px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-slate"><ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Vous êtes entre…</span>
+                <div className="flex items-center gap-2">
+                  {kindLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-soft" aria-hidden />}
+                  <span className="text-[12px] font-semibold text-slate">Comparer avec :</span>
+                  <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
+                </div>
+              </div>
+              <div key={kind} className="cjv-drop">
               <p className="mt-4 flex max-w-[680px] flex-wrap items-center gap-x-1.5 text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
                 {below && above ? (
                   <>
@@ -552,6 +571,7 @@ export function Comparateur() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </section>
 
@@ -630,27 +650,43 @@ export function Comparateur() {
                 <div className="relative mx-auto mb-24 min-w-[560px] md:mb-28 md:min-w-0">
                   <div className="h-[22px] w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
-                  {/* repères fixes + métier comparé + ajoutés */}
+                  {/* repères fixes + métier comparé + ajoutés, avec gestion des collisions */}
                   {(() => {
                     type Pt = { label: string; pos: number; lines: string[]; q?: string; kind: "fix" | "metier" | "extra" };
-                    const pts: Pt[] = SCALE_FIXED.map((s) => ({ label: s.label, pos: s.pos, lines: [s.tip], q: s.q, kind: "fix" as const }));
-                    if (metierRef && refCalc) pts.push({ label: metierRef.name, pos: refCalc.central, lines: [refContext, `${refRange ? `${euro(refCalc.min)} – ${euro(refCalc.max)}` : euro(refCalc.central)} / an`].filter(Boolean), q: metierRef.name, kind: "metier" });
-                    extra.forEach((e) => pts.push({ label: e.name, pos: e.salary, lines: [`${euro(e.salary)} / an`], q: e.name, kind: "extra" }));
-                    return pts.sort((a, b) => a.pos - b.pos).map((m, idx) => {
-                      const left = scalePos(m.pos);
+                    const base: Pt[] = SCALE_FIXED.map((s) => ({ label: s.label, pos: s.pos, lines: [s.tip], q: s.q, kind: "fix" as const }));
+                    if (metierRef && refCalc) base.push({ label: metierRef.name, pos: refCalc.central, lines: [refContext, `${refRange ? `${euro(refCalc.min)} – ${euro(refCalc.max)}` : euro(refCalc.central)} / an`].filter(Boolean), q: metierRef.name, kind: "metier" });
+                    extra.forEach((e) => base.push({ label: e.name, pos: e.salary, lines: [`${euro(e.salary)} / an`], q: e.name, kind: "extra" }));
+
+                    const items = base.sort((a, b) => a.pos - b.pos).map((m) => ({ ...m, left: scalePos(m.pos) }));
+                    // Coloration gloutonne : deux points à moins de GAP% partagent des "niveaux" différents.
+                    const GAP = 9;
+                    const levels: number[] = [];
+                    items.forEach((it, i) => {
+                      const used = new Set<number>();
+                      for (let j = 0; j < i; j++) if (Math.abs(it.left - items[j].left) < GAP) used.add(levels[j]);
+                      let lvl = 0; while (used.has(lvl)) lvl++; levels[i] = lvl;
+                    });
+
+                    return items.map((m, idx) => {
+                      const level = levels[idx];
+                      const side: "below" | "above" = level % 2 === 0 ? "below" : "above"; // alterne sous / au-dessus
+                      const tier = Math.floor(level / 2);
+                      const off = 28 + tier * 20; // décalage vertical du label (paliers)
+                      const left = m.left;
                       const Tag: any = m.q ? Link : "div";
                       const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
-                      const lower = idx % 2 === 1;
                       const edge = left < 13 ? "l" : left > 87 ? "r" : "c";
                       const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
                       const arrPos = edge === "l" ? "left-4" : edge === "r" ? "right-4" : "left-1/2 -translate-x-1/2";
                       const dot = m.kind === "metier" ? "bg-[#7C3AED] ring-4 ring-[#7C3AED]/25" : m.kind === "extra" ? "bg-[#2F6BFF]" : m.q ? "bg-[#7C3AED]" : "bg-slate-soft";
-                      const lblColor = m.kind === "metier" ? "text-[#6D28D9] font-bold" : m.kind === "extra" ? "text-[#2F6BFF]" : m.q ? "text-[#6D28D9]" : "text-slate";
+                      const lblColor = m.kind === "metier" ? "text-[#6D28D9] font-bold" : m.kind === "extra" ? "text-[#2F6BFF] font-semibold" : m.q ? "text-[#6D28D9] font-semibold" : "text-slate font-semibold";
                       return (
                         <Tag key={`${m.label}-${idx}`} {...tagProps} className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-[70]" style={{ left: `${left}%` }}>
+                          {/* trait de rappel quand le label est éloigné (palier) */}
+                          {tier > 0 && <span aria-hidden className="absolute left-1/2 w-px -translate-x-1/2 bg-line" style={side === "below" ? { top: "10px", height: `${off - 12}px` } : { bottom: "10px", height: `${off - 12}px` }} />}
                           <span className={`block h-[18px] w-[18px] rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.45] ${dot}`} />
-                          <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12.5px] font-semibold ${lblColor} ${lower ? "top-8" : "bottom-8"}`}>{m.label}</span>
-                          <span className={`pointer-events-none absolute bottom-[46px] z-[80] w-max max-w-[220px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
+                          <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] ${lblColor}`} style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
+                          <span className={`pointer-events-none absolute bottom-[46px] z-[80] w-max max-w-[230px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
                             <span className="block text-[13px] font-extrabold text-white">{m.label}</span>
                             {m.lines.map((ln, k) => (
                               <span key={k} className={`block ${k === m.lines.length - 1 ? "mt-0.5 text-[12.5px] font-bold text-white" : "text-[11.5px] font-medium text-white/70"}`}>{ln}</span>

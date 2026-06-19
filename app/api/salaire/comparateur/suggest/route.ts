@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const norm = (s: string) => (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
-interface Item { name: string; slug: string; salary: number; category: string }
+interface Item { name: string; slug: string; salary: number; category: string; isPerson: boolean }
 let CACHE: Item[] | null = null;
 
 async function buildIndex(): Promise<Item[]> {
@@ -16,7 +16,6 @@ async function buildIndex(): Promise<Item[]> {
   const { records } = await getDataset();
   const byName = new Map<string, (typeof records)[number]>();
   for (const r of records) {
-    if (r.isPerson) continue; // métiers uniquement
     const s = r.salaryTotalEur;
     if (!r.displayName || s == null || !(s > 0)) continue;
     const prev = byName.get(r.displayName);
@@ -29,6 +28,7 @@ async function buildIndex(): Promise<Item[]> {
     slug: r.slug,
     salary: r.salaryTotalEur as number,
     category: broadCategory({ type: r.type, category: r.category, subCategory: r.subCategory } as SearchResultItem),
+    isPerson: r.isPerson,
   }));
   return CACHE;
 }

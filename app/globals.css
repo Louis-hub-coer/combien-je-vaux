@@ -368,3 +368,10 @@
 @keyframes cjvSparkDrift { 0%,100% { opacity: .2; transform: translate(0,0); } 50% { opacity: .7; transform: translate(6px,-12px); } }
 .cjv-spark2 { animation: cjvSparkDrift 7s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .cjv-bubble, .cjv-spark2 { animation: none; opacity: 0 !important; } }
+
+/* Fond "aura" premium (/salaires) : respiration + trajectoires + particules */
+@keyframes cjvBreath { 0%,100% { transform: scale(1); opacity: var(--o,.5); } 50% { transform: scale(1.14); opacity: calc(var(--o,.5) * 1.3); } }
+.cjv-breath { animation: cjvBreath 9s ease-in-out infinite; }
+@keyframes cjvOrbit { 0% { transform: translate(0,0); } 33% { transform: translate(18px,-14px); } 66% { transform: translate(-14px,12px); } 100% { transform: translate(0,0); } }
+.cjv-orbit { animation: cjvOrbit 22s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cjv-breath, .cjv-orbit { animation: none; } }

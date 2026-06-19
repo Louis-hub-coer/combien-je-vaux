@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SalarySearch } from "@/components/salaires/SalarySearch";
-import { SalairesFunBackground } from "@/components/salaires/SalairesFunBackground";
+import { SalairesAuraBackground } from "@/components/salaires/SalairesAuraBackground";
 
 export const metadata: Metadata = {
   title: "Rechercher un salaire",
@@ -55,11 +55,8 @@ export default function SalairesPage() {
         }}
       />
 
-      {/* Couche animée : bulles de salaires flottantes + particules (ludique, premium) */}
-      <SalairesFunBackground />
-      <span aria-hidden className="cjv-spark2 pointer-events-none absolute left-[20%] top-[26%] -z-10 h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_12px_rgba(0,195,137,.9)]" />
-      <span aria-hidden className="cjv-spark2 pointer-events-none absolute right-[22%] top-[34%] -z-10 h-1.5 w-1.5 rounded-full bg-[#7C3AED] shadow-[0_0_12px_rgba(124,58,237,.9)]" style={{ animationDelay: "2s" }} />
-      <span aria-hidden className="cjv-spark2 pointer-events-none absolute left-[26%] top-[68%] -z-10 h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_12px_rgba(47,107,255,.9)]" style={{ animationDelay: "3.5s" }} />
+      {/* Couche animée premium : halos qui respirent + trajectoires + particules (pas de bulles textuelles) */}
+      <SalairesAuraBackground />
 
       <Container className="relative py-8 md:py-12">
         {/* Lien retour discret */}
