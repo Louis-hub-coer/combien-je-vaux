@@ -6,7 +6,7 @@ import { SalaireBackground } from "@/components/salaire/SalaireBackground";
 import { Comparateur } from "@/components/salaire/Comparateur";
 
 export const metadata: Metadata = {
-  title: "Comparateur de salaire : qui gagne comme vous ?",
+  title: "Comparateur de salaire : où se situe votre salaire ?",
   description:
     "Entrez votre salaire et découvrez les métiers, personnalités et profils qui ont un revenu proche du vôtre.",
 };
@@ -37,10 +37,10 @@ export default function ComparateurPage() {
             Comparateur salaire
           </span>
           <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
-            Qui gagne <span className="hl">comme vous</span> ?
+            Où se situe <span className="hl">votre salaire</span> ?
           </h1>
-          <p className="mx-auto mt-5 max-w-[600px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
-            Entrez votre salaire et découvrez les métiers, personnalités et profils qui ont un revenu proche du vôtre.
+          <p className="mx-auto mt-5 max-w-[640px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
+            Entrez votre salaire et découvrez les profils juste au-dessus, juste en dessous, et votre position sur l’échelle des revenus.
           </p>
         </header>
 

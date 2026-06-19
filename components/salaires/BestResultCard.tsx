@@ -314,7 +314,7 @@ export function BestResultCard({
 
         {/* CTA */}
         <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
-          <Button href="#" className="w-full sm:w-auto">
+          <Button href="/salaire/comparateur" className="w-full sm:w-auto">
             <Scale className="h-4 w-4" />
             Comparer avec mon salaire
           </Button>

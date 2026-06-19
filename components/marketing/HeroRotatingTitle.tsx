@@ -73,7 +73,7 @@ export function HeroRotatingTitle() {
     >
       Cherchez le salaire
       <br />
-      <span className="inline-flex items-baseline whitespace-nowrap">
+      <span className="inline-flex items-center whitespace-nowrap">
         <span className="hl">{text}</span>
         {!reduce && <span className="cjv-caret" />}
       </span>

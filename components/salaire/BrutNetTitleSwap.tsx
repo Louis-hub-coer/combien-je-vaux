@@ -2,29 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-/** Mot dynamique : alterne en fondu doux entre deux états (largeur réservée). */
-function SwapWord({ a, b, i, reduce }: { a: string; b: string; i: number; reduce: boolean }) {
-  const sizer = a.length >= b.length ? a : b;
-  return (
-    <span className="relative inline-block align-baseline">
-      <span className="invisible whitespace-nowrap">{sizer}</span>
-      {[a, b].map((w, idx) => (
-        <span
-          key={w}
-          className="hl whitespace-nowrap"
-          style={{ position: "absolute", inset: 0, transition: "opacity .6s ease", opacity: reduce ? (idx === 0 ? 1 : 0) : i === idx ? 1 : 0 }}
-        >
-          {w}
-        </span>
-      ))}
-    </span>
-  );
-}
+// Les deux phrases ont EXACTEMENT la même longueur (11 caractères) -> largeur
+// identique -> aucun espace parasite. On les superpose et on fait un fondu doux.
+const PHRASES = ["brut en net", "net en brut"];
 
-/**
- * « Convertissez votre {brut/net} en {net/brut} ».
- * Seuls les deux mots alternent ; « Convertissez votre » et « en » restent fixes.
- */
 export function BrutNetTitleSwap() {
   const [i, setI] = useState(0);
   const [reduce, setReduce] = useState(false);
@@ -35,14 +16,33 @@ export function BrutNetTitleSwap() {
       setReduce(true);
       return;
     }
-    const id = setInterval(() => setI((v) => (v + 1) % 2), 3800);
+    const id = setInterval(() => setI((v) => (v + 1) % PHRASES.length), 4200);
     return () => clearInterval(id);
   }, []);
 
   return (
     <>
-      Convertissez votre <SwapWord a="brut" b="net" i={i} reduce={reduce} /> en{" "}
-      <SwapWord a="net" b="brut" i={i} reduce={reduce} />
+      Convertissez votre{" "}
+      <span className="relative inline-block whitespace-nowrap align-baseline">
+        {/* Sizer invisible : réserve une largeur fixe (identique pour les deux phrases). */}
+        <span className="invisible">brut en net</span>
+        {PHRASES.map((p, idx) => (
+          <span
+            key={p}
+            className="hl"
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              whiteSpace: "nowrap",
+              transition: "opacity .7s ease",
+              opacity: reduce ? (idx === 0 ? 1 : 0) : i === idx ? 1 : 0,
+            }}
+          >
+            {p}
+          </span>
+        ))}
+      </span>
     </>
   );
 }

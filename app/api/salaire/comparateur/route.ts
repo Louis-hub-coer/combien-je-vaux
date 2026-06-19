@@ -16,8 +16,35 @@ interface Profile {
   isPerson: boolean;
 }
 
+const norm = (s: string) => (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// Personnalités connues (le résultat principal doit rester « parlant »).
+const STRONG_PERSONS = [
+  "mbappe", "cristiano ronaldo", "ronaldo", "messi", "neymar", "benzema", "griezmann", "zidane",
+  "haaland", "lewandowski", "pogba", "de bruyne", "ribery", "giroud",
+  "mrbeast", "squeezie", "ishowspeed", "michou", "inoxtag", "lena", "tibo inshape", "gotaga", "squeeze",
+  "aya nakamura", "jul", "booba", "orelsan", "ninho", "gims", "soprano", "pnl", "damso", "niska",
+  "beyonce", "rihanna", "drake", "taylor swift", "kanye", "the weeknd",
+  "kim kardashian", "kylie jenner", "elon musk", "bernard arnault", "xavier niel", "omar sy", "dujardin",
+];
+// Métiers forts / parlants (toujours admissibles, même priorité moyenne).
+const STRONG_JOBS = [
+  "data scientist", "avocat", "pharmacien", "medecin", "infirmier", "infirmiere", "trader", "boulanger",
+  "professeur", "enseignant", "pilote", "commercial", "dentiste", "comptable", "developpeur", "ingenieur",
+  "notaire", "architecte", "kine", "kinesitherapeute", "veterinaire", "chirurgien", "plombier",
+  "electricien", "policier", "pompier", "journaliste", "banquier", "consultant", "agriculteur", "expert-comptable",
+];
+const PRIORITY_CUTOFF = 82;
+
 const shortCategory = (r: { type: string; category: string; subCategory: string }) =>
   broadCategory({ type: r.type, category: r.category, subCategory: r.subCategory } as SearchResultItem);
+
+/** Profil « parlant » : personnalité connue, ou métier populaire / à priorité suffisante. */
+function isInteresting(r: { displayName: string; isPerson: boolean; priority: number }): boolean {
+  const n = norm(r.displayName);
+  if (r.isPerson) return STRONG_PERSONS.some((p) => n.includes(p));
+  return r.priority >= PRIORITY_CUTOFF || STRONG_JOBS.some((j) => n.includes(j));
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -29,65 +56,41 @@ export async function GET(req: NextRequest) {
   try {
     const { records } = await getDataset();
 
-    // 1) Un profil UNIQUE par nom affiché, avec un salaire représentatif
-    //    (ligne par défaut, sinon priorité la plus élevée).
-    const byName = new Map<string, { rec: (typeof records)[number]; salary: number }>();
+    // Un profil unique par nom, salaire représentatif (ligne par défaut / priorité).
+    const byName = new Map<string, (typeof records)[number]>();
     for (const r of records) {
       const s = r.salaryTotalEur;
       if (!r.displayName || s == null || !(s > 0)) continue;
       const prev = byName.get(r.displayName);
-      if (!prev) {
-        byName.set(r.displayName, { rec: r, salary: s });
-        continue;
-      }
-      const better =
-        (r.isDefault && !prev.rec.isDefault) ||
-        (r.isDefault === prev.rec.isDefault && r.priority > prev.rec.priority);
-      if (better) byName.set(r.displayName, { rec: r, salary: s });
+      if (!prev) { byName.set(r.displayName, r); continue; }
+      const better = (r.isDefault && !prev.isDefault) || (r.isDefault === prev.isDefault && r.priority > prev.priority);
+      if (better) byName.set(r.displayName, r);
     }
 
-    const profiles: Profile[] = [];
-    for (const { rec, salary } of byName.values()) {
-      profiles.push({
-        name: rec.displayName,
-        slug: rec.slug,
-        salary,
-        diff: salary - annual,
-        category: shortCategory(rec),
-        isPerson: rec.isPerson,
+    // Pool « parlant » seulement (filtre les métiers obscurs et les personnalités inconnues).
+    const pool: Profile[] = [];
+    for (const r of byName.values()) {
+      if (!isInteresting(r)) continue;
+      pool.push({
+        name: r.displayName,
+        slug: r.slug,
+        salary: r.salaryTotalEur as number,
+        diff: (r.salaryTotalEur as number) - annual,
+        category: shortCategory(r),
+        isPerson: r.isPerson,
       });
     }
-    if (!profiles.length) {
-      return NextResponse.json({ annual, jumeau: null, near: [], above: [], below: [] });
-    }
 
-    // 2) Jumeau : profil le plus proche en valeur absolue.
-    const byAbs = [...profiles].sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-    const jumeau = byAbs[0];
-
-    // 3) « Ils gagnent comme vous » : proches et variés (max 2 par catégorie).
-    const near: Profile[] = [];
-    const catCount: Record<string, number> = {};
-    for (const p of byAbs) {
-      if (p.name === jumeau.name) continue;
-      const c = catCount[p.category] ?? 0;
-      if (c >= 2) continue;
-      catCount[p.category] = c + 1;
-      near.push(p);
-      if (near.length >= 5) break;
-    }
-    // Glisser une personnalité proche si aucune n'est présente.
-    if (!near.some((p) => p.isPerson)) {
-      const person = byAbs.find((p) => p.isPerson && p.name !== jumeau.name);
-      if (person && near.length) near[near.length - 1] = person;
-    }
-
-    // 4) Juste au-dessus / juste en dessous (les plus proches de part et d'autre).
-    const above = profiles.filter((p) => p.diff > 0 && p.name !== jumeau.name).sort((a, b) => a.diff - b.diff).slice(0, 3);
-    const below = profiles.filter((p) => p.diff < 0 && p.name !== jumeau.name).sort((a, b) => b.diff - a.diff).slice(0, 3);
+    const below = pool.filter((p) => p.diff < 0).sort((a, b) => b.diff - a.diff); // plus proches d'abord (diff ↑ vers 0)
+    const above = pool.filter((p) => p.diff >= 0).sort((a, b) => a.diff - b.diff); // plus proches d'abord
 
     return NextResponse.json(
-      { annual, jumeau, near, above, below },
+      {
+        annual,
+        between: { below: below[0] ?? null, above: above[0] ?? null },
+        listBelow: below.slice(0, 3),
+        listAbove: above.slice(0, 3),
+      },
       { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=86400" } },
     );
   } catch (e) {
