@@ -383,3 +383,8 @@
 .cjv-range::-moz-range-thumb { width: 30px; height: 30px; border-radius: 999px; background: #fff; border: 4px solid #7C3AED; box-shadow: 0 6px 16px -4px rgba(124,58,237,.7); cursor: pointer; }
 .cjv-range::-moz-range-track { height: 14px; border-radius: 999px; background: transparent; }
 @media (prefers-reduced-motion: reduce) { .cjv-range::-webkit-slider-thumb { transition: none; } }
+
+/* Titre top-france : remplacement propre d'UN chiffre (jamais vide, jamais concaténé) */
+@keyframes cjv-topnum-in { 0% { opacity: 0; transform: translateY(-0.22em); } 100% { opacity: 1; transform: translateY(0); } }
+.cjv-topnum { display: inline-block; min-width: 1.25em; text-align: center; animation: cjv-topnum-in .42s cubic-bezier(.22,1,.36,1); }
+@media (prefers-reduced-motion: reduce) { .cjv-topnum { animation: none; } }
