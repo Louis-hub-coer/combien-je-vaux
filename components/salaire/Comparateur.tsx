@@ -335,12 +335,12 @@ export function Comparateur() {
   const refRange = refCalc && refCalc.min !== refCalc.max;
 
   // ---- Repères de l'échelle (montants uniformisés : toujours € / an, brut ou net précisé) ----
-  const SCALE_FIXED: { label: string; pos: number; amount: number; basis: "brut" | "net" | ""; q?: string }[] = [
-    { label: "SMIC", pos: 22404, amount: 22404, basis: "brut" },
-    { label: "Salaire médian", pos: Math.round(26280 * NET2GROSS), amount: 26280, basis: "net" },
-    { label: "Médecin", pos: 98000, amount: 98000, basis: "brut", q: "Médecin" },
-    { label: "Trader", pos: 130000, amount: 130000, basis: "brut", q: "Trader" },
-    { label: "Stars", pos: 12_000_000, amount: 12_000_000, basis: "brut", q: "Mbappé" },
+  const SCALE_FIXED: { label: string; pos: number; amount: number; basis: "brut" | "net" | ""; q?: string; color: string }[] = [
+    { label: "SMIC", pos: 22404, amount: 22404, basis: "brut", color: "#64748B" },
+    { label: "Salaire médian", pos: Math.round(26280 * NET2GROSS), amount: 26280, basis: "net", color: "#475569" },
+    { label: "Médecin", pos: 98000, amount: 98000, basis: "brut", q: "Médecin", color: "#0EA5A4" },
+    { label: "Trader", pos: 130000, amount: 130000, basis: "brut", q: "Trader", color: "#2F6BFF" },
+    { label: "Stars", pos: 12_000_000, amount: 12_000_000, basis: "brut", q: "Mbappé", color: "#F59E0B" },
   ];
   // Rendu uniforme d'un montant d'échelle.
   const fmtScale = (amount: number, basis: "brut" | "net" | "", approx = true) => `${approx ? "≈ " : ""}${euro(amount)}${basis ? ` ${basis}` : ""} / an`;
@@ -387,7 +387,7 @@ export function Comparateur() {
           {/* Étape 2 — Comparer avec (un métier ou une personnalité) */}
           <div className="mt-6 flex items-center gap-2.5">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#7C3AED] text-[12px] font-bold text-white shadow-[0_4px_10px_-3px_rgba(124,58,237,.7)]">2</span>
-            <h3 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink">Comparer avec <span className="text-[13px] font-semibold text-[#7C3AED]">— optionnel</span></h3>
+            <h3 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink">Comparer avec un profil</h3>
           </div>
           <div className="mt-3 rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white px-4 py-4 md:px-5">
             <p className="mb-3 text-[12.5px] text-slate">Choisissez un <b className="font-semibold text-ink">métier</b> ou une <b className="font-semibold text-ink">personnalité</b>, puis affinez si des filtres existent.</p>
@@ -502,11 +502,7 @@ export function Comparateur() {
                 </p>
                 {!refNear && (
                   <p className="mt-1.5 text-[14px] font-semibold text-slate">
-                    {refDiff > 0
-                      ? (Math.abs(refPct) >= 90
-                          ? <>L’écart est très important : le salaire {estTarget} est dans une tranche bien plus élevée.</>
-                          : `Votre salaire est environ ${Math.abs(refPct)} % inférieur au sien.`)
-                      : `Votre salaire est environ ${Math.abs(refPct)} % supérieur au sien.`}
+                    Cela représente environ {Math.min(99, Math.abs(refPct))} % de salaire en {refDiff > 0 ? "moins" : "plus"}.
                   </p>
                 )}
                 <Link href={`/salaires?q=${encodeURIComponent(metierRef.name)}`} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-3 text-[14px] font-semibold text-white transition hover:-translate-y-px hover:bg-ink-soft">Voir la fiche de {metierRef.name} <ArrowRight className="h-4 w-4" /></Link>
@@ -521,25 +517,25 @@ export function Comparateur() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-surface px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-slate"><ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Vous êtes entre…</span>
               </div>
-              {/* Filtre des profils affichés (panneau distinct du profil sélectionné en carte 1) */}
-              <div className="mt-3 rounded-xl border border-line bg-surface/70 px-3.5 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                  <span className="text-[12.5px] font-bold text-ink">Se situer par rapport à :</span>
-                  <div className="flex items-center gap-2">
-                    {kindLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-soft" aria-hidden />}
-                    <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
-                  </div>
+              {/* Filtre des profils affichés — choix de comparaison bien visible (panneau distinct de la carte 1) */}
+              <div className="mt-3 rounded-2xl border border-[#E3DAFB] bg-[#F7F4FE] px-4 py-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13.5px] font-bold text-ink">Je veux me situer par rapport à :</span>
+                  {kindLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#7C3AED]" aria-hidden />}
                 </div>
-                <p className="mt-1.5 text-[11.5px] leading-snug text-slate">Choisissez si votre salaire doit être comparé aux métiers, aux personnalités, ou aux deux.</p>
+                <div className="mt-2.5">
+                  <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
+                </div>
+                <p className="mt-2.5 text-[12px] leading-snug text-slate">Choisissez si le résultat doit comparer votre salaire aux métiers, aux personnalités, ou aux deux.</p>
               </div>
               <div key={kind} className="cjv-drop">
               <p className="mt-6 max-w-[700px] text-balance font-display text-[clamp(22px,3.2vw,32px)] font-bold leading-[1.3] tracking-[-0.015em] text-ink">
                 {below && above ? (
                   <>Votre salaire se situe entre le salaire {artOf(below)}<span className="font-extrabold text-[#E11D48]">{below.name}</span> et celui {artOf(above)}<span className="font-extrabold text-[#0A8F60]">{above.name}</span>.</>
                 ) : below ? (
-                  <>Votre salaire se situe juste au-dessus du salaire {artOf(below)}<span className="font-extrabold text-[#E11D48]">{below.name}</span>.</>
+                  <>Votre salaire se situe au-dessus du salaire {artOf(below)}<span className="font-extrabold text-[#E11D48]">{below.name}</span>.</>
                 ) : above ? (
-                  <>Votre salaire se situe juste en dessous du salaire {artOf(above)}<span className="font-extrabold text-[#0A8F60]">{above.name}</span>.</>
+                  <>Votre salaire se situe en dessous du salaire {artOf(above)}<span className="font-extrabold text-[#0A8F60]">{above.name}</span>.</>
                 ) : <>Aucun profil comparable pour ce filtre.</>}
               </p>
 
@@ -648,52 +644,45 @@ export function Comparateur() {
                 <div className="relative mx-auto mb-24 min-w-[560px] md:mb-28 md:min-w-0">
                   <div className="h-[44px] w-full rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,.18)]" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
-                  {/* repères + profil comparé + ajoutés — aucune superposition (offsets visuels) */}
+                  {/* repères + profil comparé + ajoutés — couleurs distinctes, labels visibles, aucun chevauchement */}
                   {(() => {
-                    type Pt = { label: string; pos: number; lines: string[]; q?: string; kind: "fix" | "metier" | "extra" };
-                    const base: Pt[] = SCALE_FIXED.map((s) => ({ label: s.label, pos: s.pos, lines: [fmtScale(s.amount, s.basis, true)], q: s.q, kind: "fix" as const }));
+                    type Pt = { label: string; pos: number; lines: string[]; q?: string; kind: "fix" | "metier" | "extra"; color: string };
+                    const base: Pt[] = SCALE_FIXED.map((s) => ({ label: s.label, pos: s.pos, lines: [fmtScale(s.amount, s.basis, true)], q: s.q, kind: "fix" as const, color: s.color }));
                     if (metierRef && refCalc) {
                       const b: "brut" | "" = metierRef.isPerson ? "" : "brut";
                       const amountText = refRange ? `${euro(refCalc.min)} – ${euro(refCalc.max)}${b ? ` ${b}` : ""} / an` : fmtScale(refCalc.central, b, false);
-                      base.push({ label: metierRef.name, pos: refCalc.central, lines: [!metierRef.isPerson && refContext ? refContext : "", amountText].filter(Boolean), q: metierRef.name, kind: "metier" });
+                      base.push({ label: metierRef.name, pos: refCalc.central, lines: [!metierRef.isPerson && refContext ? refContext : "", amountText].filter(Boolean), q: metierRef.name, kind: "metier", color: "#7C3AED" });
                     }
-                    extra.forEach((e) => base.push({ label: e.name, pos: e.salary, lines: [fmtScale(e.salary, e.isPerson ? "" : "brut", false)], q: e.name, kind: "extra" }));
+                    extra.forEach((e) => base.push({ label: e.name, pos: e.salary, lines: [fmtScale(e.salary, e.isPerson ? "" : "brut", false)], q: e.name, kind: "extra", color: "#6366F1" }));
 
-                    // 1) Anti-collision des POINTS : on écarte visuellement sans changer les vraies valeurs (tooltips inchangés).
+                    // 1) Anti-collision des POINTS (offset visuel, vraies valeurs conservées).
                     const sorted = base.sort((a, b) => a.pos - b.pos).map((m) => ({ ...m, left0: scalePos(m.pos) }));
                     const MIN_GAP = 3.4; let prev = -Infinity;
                     const items = sorted.map((m) => { const left = Math.min(99.2, Math.max(m.left0, prev + MIN_GAP)); prev = left; return { ...m, left }; });
 
-                    // 2) LABELS visibles par défaut seulement pour le profil comparé + les profils ajoutés (les repères restent au survol).
-                    const LGAP = 17; const labelLevel: Record<number, number> = {}; const placed: { left: number; lvl: number }[] = [];
-                    items.forEach((m, i) => {
-                      if (m.kind !== "metier" && m.kind !== "extra") return;
-                      const used = new Set<number>(); placed.forEach((a) => { if (Math.abs(m.left - a.left) < LGAP) used.add(a.lvl); });
-                      let lvl = 0; while (used.has(lvl)) lvl++; labelLevel[i] = lvl; placed.push({ left: m.left, lvl });
-                    });
+                    // 2) Niveaux des LABELS (tous affichés) : alternance haut/bas + paliers, au-delà de 2 paliers -> survol.
+                    const LGAP = 15; const lvl: number[] = [];
+                    items.forEach((it, i) => { const used = new Set<number>(); for (let j = 0; j < i; j++) if (Math.abs(it.left - items[j].left) < LGAP) used.add(lvl[j]); let k = 0; while (used.has(k)) k++; lvl[i] = k; });
 
                     return items.map((m, idx) => {
-                      const isMetier = m.kind === "metier"; const isExtra = m.kind === "extra";
-                      const hasLabel = (isMetier || isExtra) && idx in labelLevel;
-                      const level = labelLevel[idx] ?? 0; const side: "below" | "above" = level % 2 === 0 ? "below" : "above"; const tier = Math.floor(level / 2);
-                      const off = 36 + tier * 22;
-                      const labelShown = hasLabel && (isMetier || tier < 2); // au-delà de 2 paliers : au survol
-                      const left = m.left;
-                      const Tag: any = m.q ? Link : "div";
-                      const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
+                      const level = lvl[idx]; const side: "below" | "above" = level % 2 === 0 ? "below" : "above"; const tier = Math.floor(level / 2);
+                      const off = 34 + tier * 22; const isMetier = m.kind === "metier"; const isExtra = m.kind === "extra";
+                      const labelShown = isMetier || tier < 2;
+                      const left = m.left; const Tag: any = m.q ? Link : "div"; const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
                       const edge = left < 13 ? "l" : left > 87 ? "r" : "c";
                       const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
                       const arrPos = edge === "l" ? "left-4" : edge === "r" ? "right-4" : "left-1/2 -translate-x-1/2";
-                      const dotSize = isMetier ? "h-[26px] w-[26px]" : isExtra ? "h-[20px] w-[20px]" : "h-[14px] w-[14px]";
-                      const dot = isMetier ? "bg-[#7C3AED] ring-[6px] ring-[#7C3AED]/30" : isExtra ? "bg-[#2F6BFF] ring-2 ring-[#2F6BFF]/25" : "bg-white/95";
-                      const lblBase = isMetier ? "rounded-md bg-[#EEE7FD] px-1.5 py-0.5 text-[#6D28D9] font-extrabold" : "text-[#2F6BFF] font-semibold";
+                      const dotSize = isMetier ? "h-[26px] w-[26px]" : isExtra ? "h-[20px] w-[20px]" : "h-[16px] w-[16px]";
+                      const ringPx = isMetier ? 6 : isExtra ? 3 : 2;
                       const zCls = isMetier ? "z-30" : isExtra ? "z-20" : "z-10";
                       return (
                         <Tag key={`${m.label}-${idx}`} {...tagProps} className={`group absolute top-1/2 ${zCls} -translate-x-1/2 -translate-y-1/2 hover:z-[80]`} style={{ left: `${left}%` }}>
-                          {labelShown && tier > 0 && <span aria-hidden className="absolute left-1/2 w-px -translate-x-1/2 bg-line" style={side === "below" ? { top: "15px", height: `${off - 17}px` } : { bottom: "15px", height: `${off - 17}px` }} />}
-                          <span className={`block rounded-full border-2 border-white shadow-[0_2px_9px_rgba(15,23,42,.4)] transition group-hover:scale-[1.35] ${dotSize} ${dot}`} />
+                          {labelShown && <span aria-hidden className="absolute left-1/2 w-px -translate-x-1/2" style={{ backgroundColor: m.color, opacity: 0.45, ...(side === "below" ? { top: "14px", height: `${off - 16}px` } : { bottom: "14px", height: `${off - 16}px` }) }} />}
+                          <span className={`block rounded-full border-2 border-white transition group-hover:scale-[1.35] ${dotSize}`} style={{ backgroundColor: m.color, boxShadow: `0 0 0 ${ringPx}px ${m.color}33, 0 2px 9px rgba(15,23,42,.4)` }} />
                           {labelShown && (
-                            <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] ${lblBase}`} style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
+                            isMetier
+                              ? <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#EEE7FD] px-1.5 py-0.5 text-[12px] font-extrabold text-[#6D28D9]" style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
+                              : <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] font-bold" style={{ color: m.color, ...(side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }) }}>{m.label}</span>
                           )}
                           <span className={`pointer-events-none absolute bottom-[58px] z-[95] w-max max-w-[230px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
                             <span className="block text-[13px] font-extrabold text-white">{m.label}</span>
@@ -718,7 +707,7 @@ export function Comparateur() {
                 </div>
               </div>
 
-              <p className="text-[12px] text-slate-soft">Repères : SMIC · Salaire médian · Profil comparé · Trader · Médecin · Stars (+ vos profils ajoutés).</p>
+              <p className="text-[12px] text-slate-soft">Repères indicatifs — dernières données publiques disponibles.</p>
             </div>
           </section>
 

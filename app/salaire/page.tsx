@@ -15,8 +15,8 @@ export default function SalaireHubPage() {
     <section className="relative overflow-hidden">
       <SalaireBackground />
 
-      <Container className="relative py-8 md:py-14">
-        <header className="mx-auto max-w-[720px] text-center">
+      <Container className="relative py-8 md:py-12">
+        <header className="mx-auto mt-7 max-w-[760px] text-center">
           <span className="cjv-badge relative mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
             <span aria-hidden className="cjv-badge-halo" />
             <span className="relative flex h-2.5 w-2.5 items-center justify-center">
@@ -25,10 +25,10 @@ export default function SalaireHubPage() {
             </span>
             Univers salaire
           </span>
-          <h1 className="mx-auto max-w-[680px] text-balance text-[clamp(32px,5.2vw,56px)] font-extrabold leading-[1.06] tracking-[-0.032em] text-ink">
-            Tous les outils <span className="hl">salaire</span>
+          <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
+            Tous vos outils <span className="hl">salaire</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-[560px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
+          <p className="mx-auto mt-5 max-w-[600px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
             {salaireHub.subtitle}
           </p>
         </header>

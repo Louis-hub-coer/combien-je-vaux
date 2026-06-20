@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SalaireBackground } from "@/components/salaire/SalaireBackground";
 import { TopFrance } from "@/components/salaire/TopFrance";
+import { TopTitleSwap } from "@/components/salaire/TopTitleSwap";
 
 export const metadata: Metadata = {
   title: "Suis-je dans le top 10 % des salaires en France ?",
@@ -37,7 +38,7 @@ export default function TopFrancePage() {
             Top France
           </span>
           <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
-            Suis-je dans le <span className="hl">top 10 %</span> ?
+            Suis-je dans le <span className="hl">top <TopTitleSwap /> %</span> ?
           </h1>
           <p className="mx-auto mt-5 max-w-[640px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
             Entrez votre salaire et découvrez où vous vous situez vraiment face aux salaires en France : médiane, top 10 %, top 1 %.
