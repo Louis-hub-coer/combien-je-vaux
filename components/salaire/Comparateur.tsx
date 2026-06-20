@@ -39,6 +39,9 @@ const scalePos = (v: number) => {
 };
 const parseAmount = (s: string) => { const n = parseFloat((s || "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
 const diffLabel = (d: number) => (d > 0 ? "+" : "−") + euro(Math.abs(d));
+// Article naturel : "de Mbappé" / "d'Ethan Mbappé" (personnes) ; "d'un Trader" (métiers).
+const artOf = (p: { name: string; isPerson: boolean }) =>
+  p.isPerson ? (/^[aeiouyàâäéèêëîïôöûüh]/i.test(p.name.trim()) ? "d’" : "de ") : "d’un ";
 const uniq = (a: string[]) => Array.from(new Set(a.filter(Boolean)));
 
 function Money({ value, per, className = "" }: { value: number; per?: "mois" | "an"; className?: string }) {
@@ -268,7 +271,8 @@ export function Comparateur() {
   useEffect(() => {
     if (status === "done" && shouldScroll.current) {
       shouldScroll.current = false;
-      requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      // Petit délai : on laisse l'apparition du résultat s'amorcer avant la descente douce.
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 90);
     }
   }, [status, shownAnnual]);
 
@@ -350,7 +354,7 @@ export function Comparateur() {
           className="cjv-toolcard rounded-[28px] border border-line bg-white/85 p-5 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-7">
           {/* Étape 1 — Votre salaire */}
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">1</span>
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[12px] font-bold text-ink shadow-[0_4px_10px_-3px_rgba(0,195,137,.7)]">1</span>
             <h3 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink">Votre salaire</h3>
           </div>
           <div className="mt-3 grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -382,8 +386,8 @@ export function Comparateur() {
 
           {/* Étape 2 — Comparer avec (un métier ou une personnalité) */}
           <div className="mt-6 flex items-center gap-2.5">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">2</span>
-            <h3 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink">Comparer avec <span className="text-[13px] font-semibold text-slate-soft">— optionnel</span></h3>
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#7C3AED] text-[12px] font-bold text-white shadow-[0_4px_10px_-3px_rgba(124,58,237,.7)]">2</span>
+            <h3 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink">Comparer avec <span className="text-[13px] font-semibold text-[#7C3AED]">— optionnel</span></h3>
           </div>
           <div className="mt-3 rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white px-4 py-4 md:px-5">
             <p className="mb-3 text-[12.5px] text-slate">Choisissez un <b className="font-semibold text-ink">métier</b> ou une <b className="font-semibold text-ink">personnalité</b>, puis affinez si des filtres existent.</p>
@@ -490,15 +494,19 @@ export function Comparateur() {
               <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-[#D9CFFA] bg-gradient-to-br from-[#F4EFFE] via-[#F8F5FF] to-white p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] md:p-8">
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#D9CFFA] bg-white/70 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#6D28D9]"><Briefcase className="h-3.5 w-3.5" /> Vous comparez votre salaire avec {metierRef.name}</span>
                 {!metierRef.isPerson && refContext && <p className="mt-3 text-[13.5px] font-semibold text-[#6D28D9]">{refContext}</p>}
-                <p className="mt-1 text-[14px] text-slate">Salaire estimé : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
+                <p className="mt-1 text-[14px] text-slate">Salaire retenu : <b className="font-extrabold text-ink">{refRange ? <>{euro(refCalc.min)} – <Money value={refCalc.max} per="an" /></> : <Money value={refCalc.central} per="an" />}</b></p>
                 <p className="mt-4 max-w-[680px] text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
-                  {refNear ? (<>Votre salaire est très proche du salaire estimé {estTarget}.</>)
-                    : refDiff > 0 ? (<>Il vous manque environ <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre le salaire estimé {estTarget}.</>)
-                    : (<>Vous gagnez environ <span className="text-[#0A8F60]"><Money value={Math.abs(refDiff)} per="an" /></span> de plus que le salaire estimé {estTarget}.</>)}
+                  {refNear ? (<>Votre salaire est très proche du salaire {estTarget}.</>)
+                    : refDiff > 0 ? (<>Il vous manque environ <span className="text-[#C0264A]"><Money value={Math.abs(refDiff)} per="an" /></span> pour atteindre le salaire {estTarget}.</>)
+                    : (<>Vous gagnez environ <span className="text-[#0A8F60]"><Money value={Math.abs(refDiff)} per="an" /></span> de plus que le salaire {estTarget}.</>)}
                 </p>
                 {!refNear && (
                   <p className="mt-1.5 text-[14px] font-semibold text-slate">
-                    {refDiff > 0 ? `Soit environ ${Math.abs(refPct)} % de moins.` : `Soit environ ${Math.abs(refPct)} % de plus.`}
+                    {refDiff > 0
+                      ? (Math.abs(refPct) >= 90
+                          ? <>L’écart est très important : le salaire {estTarget} est dans une tranche bien plus élevée.</>
+                          : `Votre salaire est environ ${Math.abs(refPct)} % inférieur au sien.`)
+                      : `Votre salaire est environ ${Math.abs(refPct)} % supérieur au sien.`}
                   </p>
                 )}
                 <Link href={`/salaires?q=${encodeURIComponent(metierRef.name)}`} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-3 text-[14px] font-semibold text-white transition hover:-translate-y-px hover:bg-ink-soft">Voir la fiche de {metierRef.name} <ArrowRight className="h-4 w-4" /></Link>
@@ -510,26 +518,29 @@ export function Comparateur() {
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
             <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-line bg-white/90 p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-surface px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-slate"><ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Vous êtes entre…</span>
-                <div className="flex items-center gap-2">
-                  {kindLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-soft" aria-hidden />}
-                  <span className="text-[12px] font-semibold text-slate">Comparer avec :</span>
-                  <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
+              </div>
+              {/* Filtre des profils affichés (panneau distinct du profil sélectionné en carte 1) */}
+              <div className="mt-3 rounded-xl border border-line bg-surface/70 px-3.5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <span className="text-[12.5px] font-bold text-ink">Afficher dans la comparaison</span>
+                  <div className="flex items-center gap-2">
+                    {kindLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-soft" aria-hidden />}
+                    <Seg<Kind> value={kind} onChange={setKind} size="sm" options={[{ v: "all", label: "Tout" }, { v: "metier", label: "Métiers" }, { v: "person", label: "Personnalités" }]} />
+                  </div>
                 </div>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-slate">Choisissez les profils utilisés pour trouver ce qui se situe juste en dessous et juste au-dessus de votre salaire.</p>
               </div>
               <div key={kind} className="cjv-drop">
-              <p className="mt-4 flex max-w-[680px] flex-wrap items-center gap-x-1.5 text-balance text-[clamp(20px,3.2vw,30px)] font-extrabold leading-[1.22] tracking-[-0.01em] text-ink">
+              <p className="mt-5 max-w-[700px] text-balance text-[clamp(21px,3.3vw,31px)] font-extrabold leading-[1.25] tracking-[-0.012em] text-ink">
                 {below && above ? (
-                  <>
-                    <span>Votre salaire se situe entre</span>
-                    <span className="inline-flex items-center gap-1"><TrendingDown className="h-[0.7em] w-[0.7em] text-[#E11D48]" />{below.name}</span>
-                    <span>et</span>
-                    <span className="inline-flex items-center gap-1"><TrendingUp className="h-[0.7em] w-[0.7em] text-[#10B981]" />{above.name}</span><span>.</span>
-                  </>
-                ) : below ? <>Vous êtes au-dessus de <b className="ml-1 font-extrabold text-ink">{below.name}</b>.</>
-                  : above ? <>Vous êtes en dessous de <b className="ml-1 font-extrabold text-ink">{above.name}</b>.</>
-                  : <>Aucun profil comparable pour ce filtre.</>}
+                  <>Votre salaire se situe entre le salaire {artOf(below)}<span className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-[#FFF1F3] px-1.5 align-baseline text-[#E11D48]"><TrendingDown className="h-[0.66em] w-[0.66em]" aria-hidden />{below.name}</span> et celui {artOf(above)}<span className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg bg-[#ECFDF5] px-1.5 align-baseline text-[#0A8F60]"><TrendingUp className="h-[0.66em] w-[0.66em]" aria-hidden />{above.name}</span>.</>
+                ) : below ? (
+                  <>Votre salaire est supérieur au salaire {artOf(below)}<b className="font-extrabold text-ink">{below.name}</b>.</>
+                ) : above ? (
+                  <>Votre salaire est inférieur au salaire {artOf(above)}<b className="font-extrabold text-ink">{above.name}</b>.</>
+                ) : <>Aucun profil comparable pour ce filtre.</>}
               </p>
 
               {(below || above) && (
@@ -635,7 +646,7 @@ export function Comparateur() {
               {/* échelle : pleine largeur desktop (sans scroll souris), scroll horizontal mobile uniquement */}
               <div className="mt-24 overflow-x-auto pb-3 md:mt-28 md:overflow-x-visible">
                 <div className="relative mx-auto mb-24 min-w-[560px] md:mb-28 md:min-w-0">
-                  <div className="h-[22px] w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
+                  <div className="h-[26px] w-full rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,.12)]" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
                   {/* repères + métier/personne comparé + ajoutés, avec gestion des collisions */}
                   {(() => {
@@ -650,7 +661,7 @@ export function Comparateur() {
 
                     const items = base.sort((a, b) => a.pos - b.pos).map((m) => ({ ...m, left: scalePos(m.pos) }));
                     // Coloration gloutonne : deux points proches reçoivent des "lignes" différentes (alternance haut/bas + paliers).
-                    const GAP = 12;
+                    const GAP = 14;
                     const levels: number[] = [];
                     items.forEach((it, i) => {
                       const used = new Set<number>();
@@ -662,24 +673,27 @@ export function Comparateur() {
                       const level = levels[idx];
                       const side: "below" | "above" = level % 2 === 0 ? "below" : "above";
                       const tier = Math.floor(level / 2);
-                      const off = 28 + tier * 20;
-                      const labelHidden = tier >= 2; // au-delà de 2 paliers : libellé au survol uniquement
+                      const off = 30 + tier * 21;
+                      const isMetier = m.kind === "metier";
+                      const labelHidden = tier >= 2 && !isMetier; // profil comparé : libellé toujours visible
                       const left = m.left;
                       const Tag: any = m.q ? Link : "div";
                       const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
                       const edge = left < 13 ? "l" : left > 87 ? "r" : "c";
                       const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
                       const arrPos = edge === "l" ? "left-4" : edge === "r" ? "right-4" : "left-1/2 -translate-x-1/2";
-                      const dot = m.kind === "metier" ? "bg-[#7C3AED] ring-4 ring-[#7C3AED]/25" : m.kind === "extra" ? "bg-[#2F6BFF]" : m.q ? "bg-[#7C3AED]" : "bg-slate-soft";
-                      const lblColor = m.kind === "metier" ? "text-[#6D28D9] font-bold" : m.kind === "extra" ? "text-[#2F6BFF] font-semibold" : m.q ? "text-[#6D28D9] font-semibold" : "text-slate font-semibold";
+                      const dotSize = isMetier ? "h-[24px] w-[24px]" : "h-[18px] w-[18px]";
+                      const dot = isMetier ? "bg-[#7C3AED] ring-[5px] ring-[#7C3AED]/30" : m.kind === "extra" ? "bg-[#2F6BFF]" : m.q ? "bg-[#7C3AED]" : "bg-slate-soft";
+                      const lblBase = isMetier ? "rounded-md bg-[#EEE7FD] px-1.5 py-0.5 text-[#6D28D9] font-extrabold" : m.kind === "extra" ? "text-[#2F6BFF] font-semibold" : m.q ? "text-[#6D28D9] font-semibold" : "text-slate font-semibold";
+                      const zCls = isMetier ? "z-30" : "z-10";
                       return (
-                        <Tag key={`${m.label}-${idx}`} {...tagProps} className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-[70]" style={{ left: `${left}%` }}>
-                          {!labelHidden && tier > 0 && <span aria-hidden className="absolute left-1/2 w-px -translate-x-1/2 bg-line" style={side === "below" ? { top: "10px", height: `${off - 12}px` } : { bottom: "10px", height: `${off - 12}px` }} />}
-                          <span className={`block h-[18px] w-[18px] rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.45] ${dot}`} />
+                        <Tag key={`${m.label}-${idx}`} {...tagProps} className={`group absolute top-1/2 ${zCls} -translate-x-1/2 -translate-y-1/2 hover:z-[70]`} style={{ left: `${left}%` }}>
+                          {!labelHidden && tier > 0 && <span aria-hidden className="absolute left-1/2 w-px -translate-x-1/2 bg-line" style={side === "below" ? { top: "11px", height: `${off - 13}px` } : { bottom: "11px", height: `${off - 13}px` }} />}
+                          <span className={`block rounded-full border-2 border-white shadow-[0_2px_8px_rgba(15,23,42,.32)] transition group-hover:scale-[1.4] ${dotSize} ${dot}`} />
                           {!labelHidden && (
-                            <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] ${lblColor}`} style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
+                            <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] ${lblBase}`} style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
                           )}
-                          <span className={`pointer-events-none absolute bottom-[46px] z-[90] w-max max-w-[230px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
+                          <span className={`pointer-events-none absolute bottom-[50px] z-[90] w-max max-w-[230px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
                             <span className="block text-[13px] font-extrabold text-white">{m.label}</span>
                             {m.lines.map((ln, k) => (
                               <span key={k} className={`block ${k === m.lines.length - 1 ? "mt-0.5 text-[12.5px] font-bold text-white" : "text-[11.5px] font-medium text-white/70"}`}>{ln}</span>
@@ -691,10 +705,13 @@ export function Comparateur() {
                     });
                   })()}
 
-                  {/* marqueur utilisateur */}
-                  <div className="cjv-pin absolute -top-[66px] z-50 flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
-                    <span className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-extrabold text-ink shadow-[0_8px_22px_-6px_rgba(0,195,137,.9)]">Vous · {euro(shownAnnual)}</span>
-                    <span className="cjv-pin-dot mt-1.5 h-[22px] w-[22px] rounded-full border-[3px] border-white bg-brand shadow-[0_2px_12px_rgba(0,195,137,.8)]" />
+                  {/* marqueur utilisateur — très visible (anneau pulsant) */}
+                  <div className="cjv-pin absolute -top-[72px] z-[60] flex -translate-x-1/2 flex-col items-center" style={{ left: `${userPos}%` }}>
+                    <span className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-1.5 text-[13px] font-extrabold text-ink shadow-[0_8px_22px_-6px_rgba(0,195,137,.95)]">Vous · {euro(shownAnnual)}</span>
+                    <span className="relative mt-1.5 flex h-[26px] w-[26px] items-center justify-center">
+                      <span aria-hidden className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-50" />
+                      <span className="cjv-pin-dot relative h-[26px] w-[26px] rounded-full border-[3px] border-white bg-brand shadow-[0_2px_12px_rgba(0,195,137,.85)]" />
+                    </span>
                   </div>
                 </div>
               </div>

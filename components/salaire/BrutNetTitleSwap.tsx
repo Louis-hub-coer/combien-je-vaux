@@ -16,7 +16,7 @@ export function BrutNetTitleSwap() {
       setReduce(true);
       return;
     }
-    const id = setInterval(() => setI((v) => (v + 1) % PHRASES.length), 4200);
+    const id = setInterval(() => setI((v) => (v + 1) % PHRASES.length), 2600);
     return () => clearInterval(id);
   }, []);
 
@@ -35,7 +35,7 @@ export function BrutNetTitleSwap() {
               left: 0,
               top: 0,
               whiteSpace: "nowrap",
-              transition: "opacity .7s ease",
+              transition: "opacity .55s ease",
               opacity: reduce ? (idx === 0 ? 1 : 0) : i === idx ? 1 : 0,
             }}
           >

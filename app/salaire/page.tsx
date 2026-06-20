@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SalaireBackground } from "@/components/salaire/SalaireBackground";
 import { salaireTools, salaireHub } from "@/lib/salaire-tools";
@@ -16,16 +16,13 @@ export default function SalaireHubPage() {
       <SalaireBackground />
 
       <Container className="relative py-8 md:py-14">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-white/70 px-3 py-1.5 text-[13px] font-medium text-slate backdrop-blur transition hover:text-ink"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-          Accueil
-        </Link>
-
-        <header className="mx-auto mt-7 max-w-[720px] text-center">
-          <span className="mb-3.5 inline-flex items-center gap-2 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
+        <header className="mx-auto max-w-[720px] text-center">
+          <span className="cjv-badge relative mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
+            <span aria-hidden className="cjv-badge-halo" />
+            <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+              <span className="relative h-2.5 w-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#7C3AED)", boxShadow: "0 0 8px rgba(0,195,137,.75)" }} />
+            </span>
             Univers salaire
           </span>
           <h1 className="mx-auto max-w-[680px] text-balance text-[clamp(32px,5.2vw,56px)] font-extrabold leading-[1.06] tracking-[-0.032em] text-ink">
