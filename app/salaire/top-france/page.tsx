@@ -1,11 +1,53 @@
 import type { Metadata } from "next";
-import { ToolPlaceholder } from "@/components/salaire/ToolPlaceholder";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Container } from "@/components/ui/Container";
+import { SalaireBackground } from "@/components/salaire/SalaireBackground";
+import { TopFrance } from "@/components/salaire/TopFrance";
 
 export const metadata: Metadata = {
-  title: "Suis-je dans le top 10 % ?",
-  description: "Situez votre salaire dans la distribution française : médiane, top 10 %, top 1 %.",
+  title: "Suis-je dans le top 10 % des salaires en France ?",
+  description:
+    "Entrez votre salaire et découvrez où vous vous situez face aux salaires en France : salaire médian, moyen, top 10 %, top 5 %, top 1 %. Données INSEE.",
 };
 
 export default function TopFrancePage() {
-  return <ToolPlaceholder toolKey="top-france" />;
+  return (
+    <section className="relative overflow-hidden">
+      <SalaireBackground />
+      <div aria-hidden className="cjv-float-1 pointer-events-none absolute left-[6%] top-[-50px] -z-10 h-72 w-72 rounded-full blur-3xl" style={{ background: "rgba(0,195,137,.42)" }} />
+      <div aria-hidden className="cjv-float-2 pointer-events-none absolute right-[5%] top-[10px] -z-10 h-80 w-80 rounded-full blur-3xl" style={{ background: "rgba(124,58,237,.38)" }} />
+
+      <Container className="relative py-8 md:py-12">
+        <Link
+          href="/salaire"
+          className="inline-flex items-center gap-1.5 rounded-full border border-line/80 bg-white/70 px-3 py-1.5 text-[13px] font-medium text-slate backdrop-blur transition hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Retour aux outils salaire
+        </Link>
+
+        <header className="mx-auto mt-7 max-w-[760px] text-center">
+          <span className="cjv-badge relative mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
+            <span aria-hidden className="cjv-badge-halo" />
+            <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+              <span className="relative h-2.5 w-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#7C3AED)", boxShadow: "0 0 8px rgba(0,195,137,.75)" }} />
+            </span>
+            Top France
+          </span>
+          <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
+            Suis-je dans le <span className="hl">top 10 %</span> ?
+          </h1>
+          <p className="mx-auto mt-5 max-w-[640px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
+            Entrez votre salaire et découvrez où vous vous situez vraiment face aux salaires en France : médiane, top 10 %, top 1 %.
+          </p>
+        </header>
+
+        <div className="mt-9 md:mt-11">
+          <TopFrance />
+        </div>
+      </Container>
+    </section>
+  );
 }
