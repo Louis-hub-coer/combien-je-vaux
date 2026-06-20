@@ -54,7 +54,7 @@ export const salaireTools: SalaireTool[] = [
     icon: Calculator,
     color: "#2F6BFF",
     tint: "#EAF1FF",
-    ready: false,
+    ready: true,
   },
   {
     key: "top-france",
@@ -66,7 +66,7 @@ export const salaireTools: SalaireTool[] = [
     icon: Medal,
     color: "#F59E0B",
     tint: "#FEF1D8",
-    ready: false,
+    ready: true,
   },
 ];
 

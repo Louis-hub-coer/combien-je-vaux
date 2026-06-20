@@ -340,7 +340,7 @@ export function Comparateur() {
     { label: "Salaire médian", pos: Math.round(26280 * NET2GROSS), amount: 26280, basis: "net", color: "#475569" },
     { label: "Médecin", pos: 98000, amount: 98000, basis: "brut", q: "Médecin", color: "#0EA5A4" },
     { label: "Trader", pos: 130000, amount: 130000, basis: "brut", q: "Trader", color: "#2F6BFF" },
-    { label: "Stars", pos: 12_000_000, amount: 12_000_000, basis: "brut", q: "Mbappé", color: "#F59E0B" },
+    { label: "Mbappé", pos: 12_000_000, amount: 12_000_000, basis: "brut", q: "Mbappé", color: "#F59E0B" },
   ];
   // Rendu uniforme d'un montant d'échelle.
   const fmtScale = (amount: number, basis: "brut" | "net" | "", approx = true) => `${approx ? "≈ " : ""}${euro(amount)}${basis ? ` ${basis}` : ""} / an`;
@@ -641,7 +641,7 @@ export function Comparateur() {
 
               {/* échelle : pleine largeur desktop (sans scroll souris), scroll horizontal mobile uniquement */}
               <div className="mt-24 overflow-x-auto pb-3 md:mt-28 md:overflow-x-visible">
-                <div className="relative mx-auto mb-24 min-w-[560px] md:mb-28 md:min-w-0">
+                <div className="relative mx-auto mb-24 min-w-[640px] md:mb-28 md:min-w-0">
                   <div className="h-[44px] w-full rounded-full shadow-[inset_0_2px_5px_rgba(0,0,0,.18)]" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 42%,#7C3AED 72%,#FF4D67)" }} />
 
                   {/* repères + profil comparé + ajoutés — couleurs distinctes, labels visibles, aucun chevauchement */}
@@ -655,19 +655,36 @@ export function Comparateur() {
                     }
                     extra.forEach((e) => base.push({ label: e.name, pos: e.salary, lines: [fmtScale(e.salary, e.isPerson ? "" : "brut", false)], q: e.name, kind: "extra", color: "#6366F1" }));
 
-                    // 1) Anti-collision des POINTS (offset visuel, vraies valeurs conservées).
+                    // 1) POINTS : relaxation bidirectionnelle -> écart mini garanti entre TOUTES les paires,
+                    //    jamais deux points au même endroit (même quand plusieurs repères sont collés en haut/bas).
                     const sorted = base.sort((a, b) => a.pos - b.pos).map((m) => ({ ...m, left0: scalePos(m.pos) }));
-                    const MIN_GAP = 3.4; let prev = -Infinity;
-                    const items = sorted.map((m) => { const left = Math.min(99.2, Math.max(m.left0, prev + MIN_GAP)); prev = left; return { ...m, left }; });
+                    const MIN_GAP = 5, LO = 0.8, HI = 99.2;
+                    const xs = sorted.map((m) => m.left0);
+                    for (let i = 0; i < xs.length; i++) xs[i] = Math.max(i === 0 ? LO : xs[i - 1] + MIN_GAP, xs[i]); // passe avant (G->D)
+                    if (xs.length && xs[xs.length - 1] > HI) {                                                       // débordement -> passe arrière (D->G)
+                      xs[xs.length - 1] = HI;
+                      for (let i = xs.length - 2; i >= 0; i--) xs[i] = Math.min(xs[i], xs[i + 1] - MIN_GAP);
+                    }
+                    const items = sorted.map((m, i) => ({ ...m, left: Math.max(LO, Math.min(HI, xs[i])) }));
 
-                    // 2) Niveaux des LABELS (tous affichés) : alternance haut/bas + paliers, au-delà de 2 paliers -> survol.
-                    const LGAP = 15; const lvl: number[] = [];
-                    items.forEach((it, i) => { const used = new Set<number>(); for (let j = 0; j < i; j++) if (Math.abs(it.left - items[j].left) < LGAP) used.add(lvl[j]); let k = 0; while (used.has(k)) k++; lvl[i] = k; });
+                    // 2) LABELS : placement par créneaux (côté + palier) TENANT COMPTE DE LA LARGEUR -> aucun chevauchement.
+                    const halfW = (m: typeof items[number]) => Math.min(m.kind === "metier" ? 6.7 : 5.8, m.label.length * 0.37);
+                    const SLOTS: { side: "below" | "above"; tier: number }[] = [{ side: "below", tier: 0 }, { side: "above", tier: 0 }, { side: "below", tier: 1 }, { side: "above", tier: 1 }, { side: "below", tier: 2 }, { side: "above", tier: 2 }];
+                    const placedBySlot: Record<number, { left: number; hw: number }[]> = {};
+                    const place = items.map((m) => {
+                      const hw = halfW(m);
+                      for (let s = 0; s < SLOTS.length; s++) {
+                        const arr = placedBySlot[s] || [];
+                        if (!arr.some((p) => Math.abs(m.left - p.left) < hw + p.hw + 1.5)) { (placedBySlot[s] = arr).push({ left: m.left, hw }); return SLOTS[s]; }
+                      }
+                      if (m.kind === "metier") { const s = SLOTS.length - 1; (placedBySlot[s] = placedBySlot[s] || []).push({ left: m.left, hw }); return SLOTS[s]; }
+                      return null; // trop serré -> visible au survol uniquement
+                    });
 
                     return items.map((m, idx) => {
-                      const level = lvl[idx]; const side: "below" | "above" = level % 2 === 0 ? "below" : "above"; const tier = Math.floor(level / 2);
+                      const slot = place[idx]; const labelShown = slot !== null;
+                      const side: "below" | "above" = slot ? slot.side : "below"; const tier = slot ? slot.tier : 0;
                       const off = 34 + tier * 22; const isMetier = m.kind === "metier"; const isExtra = m.kind === "extra";
-                      const labelShown = isMetier || tier < 2;
                       const left = m.left; const Tag: any = m.q ? Link : "div"; const tagProps = m.q ? { href: `/salaires?q=${encodeURIComponent(m.q)}` } : {};
                       const edge = left < 13 ? "l" : left > 87 ? "r" : "c";
                       const tipPos = edge === "l" ? "left-0" : edge === "r" ? "right-0" : "left-1/2 -translate-x-1/2";
@@ -681,8 +698,8 @@ export function Comparateur() {
                           <span className={`block rounded-full border-2 border-white transition group-hover:scale-[1.35] ${dotSize}`} style={{ backgroundColor: m.color, boxShadow: `0 0 0 ${ringPx}px ${m.color}33, 0 2px 9px rgba(15,23,42,.4)` }} />
                           {labelShown && (
                             isMetier
-                              ? <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#EEE7FD] px-1.5 py-0.5 text-[12px] font-extrabold text-[#6D28D9]" style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
-                              : <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] font-bold" style={{ color: m.color, ...(side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }) }}>{m.label}</span>
+                              ? <span className="absolute left-1/2 inline-block max-w-[120px] -translate-x-1/2 overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-[#EEE7FD] px-1.5 py-0.5 text-[11.5px] font-extrabold text-[#6D28D9]" style={side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }}>{m.label}</span>
+                              : <span className="absolute left-1/2 inline-block max-w-[104px] -translate-x-1/2 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-bold" style={{ color: m.color, ...(side === "below" ? { top: `${off}px` } : { bottom: `${off}px` }) }}>{m.label}</span>
                           )}
                           <span className={`pointer-events-none absolute bottom-[58px] z-[95] w-max max-w-[230px] rounded-xl bg-ink px-3.5 py-2.5 text-left opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition duration-150 group-hover:opacity-100 ${tipPos}`}>
                             <span className="block text-[13px] font-extrabold text-white">{m.label}</span>

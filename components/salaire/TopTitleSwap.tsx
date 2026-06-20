@@ -4,24 +4,41 @@ import { useEffect, useState } from "react";
 
 const NUMS = ["50", "20", "10", "5", "1"];
 
-// Chiffre animé pour le titre « Suis-je dans le top X % ? » (hérite la couleur .hl du parent).
+// Deux chiffres SUPERPOSÉS qui se croisent en fondu : il y en a TOUJOURS un visible.
+// -> jamais de "top  %" (trou), jamais de "50201051" (concaténation).
 export function TopTitleSwap() {
-  const [i, setI] = useState(2); // démarre sur "10"
+  const [idx, setIdx] = useState(2); // "10"
   const [reduce, setReduce] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) { setReduce(true); return; }
-    const id = setInterval(() => setI((v) => (v + 1) % NUMS.length), 2200);
+    if (mq.matches) {
+      setReduce(true);
+      return;
+    }
+    const id = setInterval(() => setIdx((v) => (v + 1) % NUMS.length), 1600);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <span className="relative inline-block align-baseline" style={{ minWidth: "1.7em" }}>
+    <span className="relative inline-block text-center align-baseline" style={{ minWidth: "1.6em" }}>
+      {/* Sizer invisible : réserve la largeur du plus grand chiffre ("50"). */}
       <span className="invisible">50</span>
-      {NUMS.map((n, idx) => (
-        <span key={n} aria-hidden={!(reduce ? idx === 2 : i === idx)}
-          style={{ position: "absolute", left: 0, right: 0, textAlign: "center", transition: "opacity .5s ease, transform .5s ease", opacity: reduce ? (idx === 2 ? 1 : 0) : i === idx ? 1 : 0, transform: i === idx ? "translateY(0)" : "translateY(-0.1em)" }}>
+      {NUMS.map((n, i) => (
+        <span
+          key={n}
+          aria-hidden={idx !== i}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            textAlign: "center",
+            transition: "opacity .42s ease, transform .42s ease",
+            opacity: reduce ? (i === 2 ? 1 : 0) : idx === i ? 1 : 0,
+            transform: reduce || idx === i ? "translateY(0)" : "translateY(-0.12em)",
+          }}
+        >
           {n}
         </span>
       ))}
