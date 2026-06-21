@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Sparkles, BarChart3, Gauge, Crown, ArrowUpRight, Compass } from "lucide-react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { Trophy, Sparkles, BarChart3, Crown, ArrowUpRight, Compass, RotateCcw } from "lucide-react";
 import {
   NET2GROSS, FR_YEAR, TOP_THRESHOLDS,
   percentileOfNetMonthly,
@@ -44,8 +45,9 @@ export function TopFrance() {
   const [submitted, setSubmitted] = useState(0);
   const [status, setStatus] = useState<"idle" | "done">("idle");
   const [target, setTarget] = useState(10);
-  const [raiseT, setRaiseT] = useState(250);            // simulateur : 0..1000, démarre à 1/4
-  const [zoom, setZoom] = useState<"all" | "me">("all"); // distribution : vue
+  const [raiseT, setRaiseT] = useState(250);
+  const [customDomain, setCustomDomain] = useState<[number, number] | null>(null);
+  const [drag, setDrag] = useState<{ x0: number; x1: number } | null>(null);
   const [hoverX, setHoverX] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -53,21 +55,21 @@ export function TopFrance() {
   const amountValue = parseAmount(amount);
   const valid = Number.isFinite(amountValue) && amountValue > 0;
 
-  // Position RÉELLE — pilote la jauge, la distribution, les bulles, l'objectif (indépendant du simulateur).
+  // Position RÉELLE — pilote la jauge, la distribution, les bulles, l'objectif.
   const baseNet = useMemo(() => (submitted > 0 ? toNetMonth(submitted, fmt) : 0), [submitted, fmt]);
   const basePct = useMemo(() => percentileOfNetMonthly(baseNet), [baseNet]);
   const baseTop = Math.max(1, Math.round(100 - basePct));
   const baseMoins = Math.min(99, Math.round(basePct));
 
-  // Simulateur — UNE seule échelle (augmentation), totalement séparée du reste.
-  const RAISE_MAX = 12000; // € net/mois max d'augmentation simulée
+  // Simulateur — échelle d'augmentation indépendante.
+  const RAISE_MAX = 12000;
   const raise = (raiseT / 1000) * RAISE_MAX;
   const simNet = baseNet + raise;
   const simPct = useMemo(() => percentileOfNetMonthly(simNet), [simNet]);
   const simTop = Math.max(1, Math.round(100 - simPct));
   const simMoins = Math.min(99, Math.round(simPct));
 
-  useEffect(() => { setRaiseT(250); }, [baseNet]); // au (re)calcul, le curseur revient à 1/4
+  useEffect(() => { setRaiseT(250); setCustomDomain(null); }, [baseNet]);
 
   const run = () => {
     if (!valid) return;
@@ -124,126 +126,125 @@ export function TopFrance() {
 
       {status === "done" && (
         <div ref={resultsRef} key={`${submitted}-${fmt}`} className="cjv-drop mt-8 space-y-7 scroll-mt-24">
-          {/* ====== Résultat principal + bulles (position réelle) ====== */}
+          {/* ====== Carte large : position (gauche) + « Vous êtes ici » à aiguille (droite) ====== */}
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
-            <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-[#D9CFFA] bg-gradient-to-br from-[#F4EFFE] via-[#F8F5FF] to-white p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] md:p-8">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#D9CFFA] bg-white/70 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#6D28D9]"><Trophy className="h-3.5 w-3.5" /> Votre position en France</span>
-              <p className="mt-4 font-display text-[clamp(19px,2.9vw,31px)] font-bold leading-[1.12] tracking-[-0.015em] text-ink">
-                Vous gagnez plus que <span className="text-[#6D28D9]">{baseMoins} %</span> des salariés français.
-              </p>
-              <p className="mt-2 text-[15px] font-semibold text-slate">Votre salaire vous place dans le <b className="text-ink">top {baseTop} %</b>. {posPhrase}</p>
+            <div className="cjv-toolcard grid gap-6 overflow-hidden rounded-[28px] border border-[#D9CFFA] bg-gradient-to-br from-[#F4EFFE] via-[#F8F5FF] to-white p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] md:p-8 lg:grid-cols-[1fr_minmax(300px,360px)] lg:items-center">
+              {/* --- Gauche : titre + 3 bulles empilées --- */}
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#D9CFFA] bg-white/70 px-3 py-1 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#6D28D9]"><Trophy className="h-3.5 w-3.5" /> Votre position en France</span>
+                <p className="mt-4 font-display text-[clamp(19px,2.7vw,29px)] font-bold leading-[1.12] tracking-[-0.015em] text-ink">
+                  Vous gagnez plus que <span className="text-[#6D28D9]">{baseMoins} %</span> des salariés français.
+                </p>
+                <p className="mt-2 text-[14.5px] font-semibold text-slate">Top {baseTop} %. {posPhrase}</p>
+                <div className="mt-5 flex flex-col gap-3">
+                  {bubbles.map((b) => (
+                    <div key={b.key} className="group relative flex cursor-default items-center justify-between gap-3 rounded-2xl border border-line bg-white/80 px-4 py-3 transition hover:-translate-y-0.5 hover:border-[#C9B8F0] hover:shadow-[0_18px_40px_-22px_rgba(124,58,237,.5)]">
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] font-bold text-ink">{b.label}</span>
+                        <span className="block text-[12px] font-medium text-slate">{b.d > 0 ? "à atteindre" : "vous êtes au-dessus"}</span>
+                      </span>
+                      <span className="flex items-center gap-2.5">
+                        <span className={`text-[16px] font-extrabold ${b.d > 0 ? "text-[#C0264A]" : "text-[#0A8F60]"}`}>{showDelta(b.d, fmt)}</span>
+                        <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${b.d > 0 ? "bg-[#FFE5EA] text-[#E11D48]" : "bg-[#E1F7EF] text-[#0A8F60]"}`}>{b.d > 0 ? <ArrowUpRight className="h-4 w-4" /> : <Crown className="h-4 w-4" />}</span>
+                      </span>
+                      <span className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-[90] w-max max-w-[230px] -translate-x-1/2 rounded-xl bg-ink px-3.5 py-2 text-center opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition group-hover:opacity-100">
+                        <span className="block text-[12px] font-medium text-white/70">Seuil {b.label.toLowerCase()}</span>
+                        <span className="mt-0.5 block text-[13px] font-bold text-white">{showRef(b.v, fmt)}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {bubbles.map((b) => (
-                  <div key={b.key} className="group relative cursor-default rounded-2xl border border-line bg-white/80 p-4 transition hover:-translate-y-0.5 hover:border-[#C9B8F0] hover:shadow-[0_18px_40px_-22px_rgba(124,58,237,.5)]">
-                    <span className="flex items-center justify-between">
-                      <span className="text-[12.5px] font-bold text-ink">{b.label}</span>
-                      <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${b.d > 0 ? "bg-[#FFE5EA] text-[#E11D48]" : "bg-[#E1F7EF] text-[#0A8F60]"}`}>{b.d > 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <Crown className="h-3.5 w-3.5" />}</span>
-                    </span>
-                    <span className={`mt-1.5 block text-[18px] font-extrabold ${b.d > 0 ? "text-[#C0264A]" : "text-[#0A8F60]"}`}>{showDelta(b.d, fmt)}</span>
-                    <span className="text-[12.5px] font-medium text-slate">{b.d > 0 ? "à atteindre" : "au-dessus du seuil"}</span>
-                    <span className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-[90] w-max max-w-[230px] -translate-x-1/2 rounded-xl bg-ink px-3.5 py-2.5 text-center opacity-0 shadow-[0_16px_36px_-10px_rgba(0,0,0,.6)] transition group-hover:opacity-100">
-                      <span className="block text-[12px] font-medium text-white/70">Seuil {b.label.toLowerCase()}</span>
-                      <span className="mt-0.5 block text-[13px] font-bold text-white">{showRef(b.v, fmt)}</span>
-                    </span>
-                  </div>
-                ))}
+              {/* --- Droite : « Vous êtes ici » à aiguille (repères nommés, texte non masqué) --- */}
+              <div className="rounded-[24px] border border-line bg-white/70 p-4 backdrop-blur">
+                <p className="text-center text-[12.5px] font-bold uppercase tracking-[0.12em] text-slate">Vous êtes ici</p>
+                {(() => {
+                  const cx = 150, cy = 150, R = 120;
+                  const ptOf = (p: number, rr: number) => { const th = Math.PI * (1 - Math.min(100, Math.max(0, p)) / 100); return [cx + rr * Math.cos(th), cy - rr * Math.sin(th)] as const; };
+                  const th = Math.PI * (1 - Math.min(100, Math.max(0, basePct)) / 100);
+                  const [tx, ty] = [cx + (R - 24) * Math.cos(th), cy - (R - 24) * Math.sin(th)];
+                  const px = Math.sin(th), py = Math.cos(th); // perpendiculaire
+                  const needle = `${cx + px * 5},${cy + py * 5} ${tx},${ty} ${cx - px * 5},${cy - py * 5}`;
+                  const refs = [
+                    { p: 50, l: "Médiane", c: "#475569", anc: "middle" as const, dx: 0, dy: -12 },
+                    { p: 90, l: "Top 10 %", c: "#7C3AED", anc: "end" as const, dx: -9, dy: -3 },
+                    { p: 99, l: "Top 1 %", c: "#FF4D67", anc: "end" as const, dx: -9, dy: 12 },
+                  ];
+                  return (
+                    <svg viewBox="0 0 300 196" className="mx-auto mt-1 h-auto w-full max-w-[320px]" preserveAspectRatio="xMidYMid meet">
+                      <defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#00C389" /><stop offset="0.5" stopColor="#2F6BFF" /><stop offset="0.78" stopColor="#7C3AED" /><stop offset="1" stopColor="#FF4D67" /></linearGradient></defs>
+                      <path d="M30 150 A120 120 0 0 1 270 150" fill="none" stroke="#EDF0F7" strokeWidth="17" strokeLinecap="round" />
+                      <path d="M30 150 A120 120 0 0 1 270 150" fill="none" stroke="url(#g5)" strokeWidth="17" strokeLinecap="round" />
+                      {refs.map((r) => { const [dxp, dyp] = ptOf(r.p, R); const [lxp, lyp] = ptOf(r.p, R); return (
+                        <g key={r.l}>
+                          <circle cx={dxp} cy={dyp} r="4.5" fill="#fff" stroke={r.c} strokeWidth="2.5" />
+                          <text x={lxp + r.dx} y={lyp + r.dy} textAnchor={r.anc} fontSize="11.5" fontWeight="800" fill={r.c}>{r.l}</text>
+                        </g>
+                      ); })}
+                      <polygon points={needle} fill="#0F172A" />
+                      <circle cx={cx} cy={cy} r="10" fill="#0F172A" /><circle cx={cx} cy={cy} r="4" fill="#fff" />
+                      <text x="150" y="178" textAnchor="middle" fontSize="30" fontWeight="800" fill="#0F172A" style={{ fontFamily: "var(--font-display)" }}>top {baseTop} %</text>
+                      <text x="150" y="192" textAnchor="middle" fontSize="11.5" fontWeight="600" fill="#5B6479">plus que {baseMoins} % des salariés</text>
+                    </svg>
+                  );
+                })()}
               </div>
             </div>
           </section>
-          {/* ====== Grille : Jauge compacte « Vous êtes ici » + Objectif (côte à côte) ====== */}
-          <section className="grid items-stretch gap-5 lg:grid-cols-2">
-            {/* --- Jauge compacte (position réelle, sans aiguille) --- */}
-            <div className="cjv-toolwrap h-full">
-              <div aria-hidden className="cjv-toolhalo" />
-              <div className="flex h-full flex-col rounded-[28px] border border-line bg-gradient-to-b from-white to-[#FBFCFF] p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><Gauge className="h-5 w-5" aria-hidden /></span>
-                  <h3 className="font-display text-[clamp(18px,2.4vw,23px)] font-extrabold tracking-[-0.015em] text-ink">Vous êtes ici</h3>
-                </div>
-                <div className="mx-auto mt-1 w-full max-w-[300px]">
-                  {(() => {
-                    const cx = 150, cy = 148, R = 120, AL = Math.PI * R;
-                    const ptOf = (p: number) => { const th = Math.PI * (1 - Math.min(100, Math.max(0, p)) / 100); return [cx + R * Math.cos(th), cy - R * Math.sin(th)] as const; };
-                    const refs = [{ p: 50, c: "#475569" }, { p: 90, c: "#7C3AED" }, { p: 99, c: "#FF4D67" }];
-                    const [ux, uy] = ptOf(basePct);
-                    return (
-                      <svg viewBox="0 0 300 168" className="h-auto w-full" preserveAspectRatio="xMidYMid meet">
-                        <defs><linearGradient id="gaugeg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#00C389" /><stop offset="0.5" stopColor="#2F6BFF" /><stop offset="0.78" stopColor="#7C3AED" /><stop offset="1" stopColor="#FF4D67" /></linearGradient></defs>
-                        <path d="M30 148 A120 120 0 0 1 270 148" fill="none" stroke="#EDF0F7" strokeWidth="16" strokeLinecap="round" />
-                        <path d="M30 148 A120 120 0 0 1 270 148" fill="none" stroke="url(#gaugeg)" strokeWidth="16" strokeLinecap="round" strokeDasharray={AL} strokeDashoffset={AL * (1 - basePct / 100)} style={{ transition: "stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)" }} />
-                        {refs.map((r) => { const [dx, dy] = ptOf(r.p); return <circle key={r.p} cx={dx} cy={dy} r="4" fill="#fff" stroke={r.c} strokeWidth="2.5" />; })}
-                        <circle cx={ux} cy={uy} r="9" fill="#00C389" stroke="#fff" strokeWidth="3" style={{ transition: "cx .6s, cy .6s" }} />
-                        <text x="150" y="116" textAnchor="middle" fontSize="34" fontWeight="800" fill="#0F172A" style={{ fontFamily: "var(--font-display)" }}>top {baseTop} %</text>
-                        <text x="150" y="140" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="#5B6479">vous gagnez plus que {baseMoins} %</text>
-                      </svg>
-                    );
-                  })()}
-                </div>
-                <div className="mt-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-2 text-[12px] font-semibold">
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#475569" }} /> Médiane</span>
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#7C3AED" }} /> Top 10 %</span>
-                  <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#FF4D67" }} /> Top 1 %</span>
-                  <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-2 border-white bg-[#00C389] shadow" /> Vous</span>
-                </div>
+          {/* ====== Objectif de classement — carte indépendante (seuils 50/20/10/5/1, sans Top 30) ====== */}
+          <section className="cjv-toolwrap">
+            <div aria-hidden className="cjv-toolhalo" />
+            <div className="cjv-toolcard overflow-hidden rounded-[28px] border border-line bg-white/90 p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur md:p-8">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><Crown className="h-5 w-5" aria-hidden /></span>
+                <h3 className="font-display text-[clamp(20px,2.6vw,26px)] font-extrabold tracking-[-0.015em] text-ink">Objectif de classement</h3>
               </div>
-            </div>
+              <p className="mt-2 text-[13.5px] font-semibold text-slate">Choisissez un objectif — survolez un repère pour voir le salaire correspondant.</p>
 
-            {/* --- Objectif de classement (repères nommés + survol salaire) --- */}
-            <div className="cjv-toolwrap h-full">
-              <div aria-hidden className="cjv-toolhalo" />
-              <div className="flex h-full flex-col rounded-[28px] border border-line bg-white/90 p-6 shadow-[0_30px_80px_-50px_rgba(5,9,24,.5)] backdrop-blur">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><Crown className="h-5 w-5" aria-hidden /></span>
-                  <h3 className="font-display text-[clamp(18px,2.4vw,23px)] font-extrabold tracking-[-0.015em] text-ink">Objectif de classement</h3>
-                </div>
-
-                {/* mini-échelle des seuils : repères nommés, salaire au survol */}
-                <div className="mt-8 mb-9">
-                  <div className="relative h-[10px] w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 46%,#7C3AED 74%,#FF4D67)" }}>
-                    {TOP_THRESHOLDS.map((t, i) => {
-                      const x = 100 - t.topPct; const sel = t.topPct === target;
-                      const labelShown = sel || [50, 20, 10].includes(t.topPct);
-                      return (
-                        <div key={t.topPct} className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, zIndex: sel ? 40 : 20 - i }}>
-                          <button type="button" onClick={() => setTarget(t.topPct)} aria-label={`Top ${t.topPct} %`}
-                            className={`block rounded-full border-2 border-white transition ${sel ? "h-[18px] w-[18px] bg-[#6D28D9]" : "h-3 w-3 bg-[#94A3B8] hover:bg-[#6D28D9]"}`} style={{ boxShadow: sel ? "0 0 0 4px rgba(124,58,237,.25)" : "0 1px 4px rgba(15,23,42,.3)" }} />
-                          {labelShown && <span className={`absolute left-1/2 top-[20px] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold ${sel ? "text-[#6D28D9]" : "text-slate-soft"}`}>Top {t.topPct}</span>}
-                          <span className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-[90] w-max -translate-x-1/2 rounded-lg bg-ink px-2.5 py-1.5 text-center opacity-0 shadow-[0_12px_28px_-8px_rgba(0,0,0,.6)] transition group-hover:opacity-100">
-                            <span className="block text-[12px] font-bold text-white">Top {t.topPct} %</span>
-                            <span className="block text-[11.5px] font-medium text-white/80">{showRef(t.netMonth, fmt)}{t.estimate ? " (est.)" : ""}</span>
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {/* position de l'utilisateur */}
-                    <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${Math.min(99, basePct)}%`, zIndex: 50 }}>
-                      <span className="block h-[16px] w-[16px] rounded-full border-[3px] border-white bg-[#00C389] shadow-[0_2px_8px_rgba(0,195,137,.8)]" />
-                      <span className="absolute left-1/2 -bottom-[19px] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold text-[#0A8F60]">Vous</span>
-                    </div>
+              <div className="mb-10 mt-9">
+                <div className="relative h-[10px] w-full rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#2F6BFF 46%,#7C3AED 74%,#FF4D67)" }}>
+                  {TOP_THRESHOLDS.filter((t) => [50, 20, 10, 5, 1].includes(t.topPct)).map((t, i) => {
+                    const x = 100 - t.topPct; const sel = t.topPct === target;
+                    const labelShown = sel || [50, 20, 10].includes(t.topPct);
+                    return (
+                      <div key={t.topPct} className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${x}%`, zIndex: sel ? 40 : 20 - i }}>
+                        <button type="button" onClick={() => setTarget(t.topPct)} aria-label={`Top ${t.topPct} %`}
+                          className={`block rounded-full border-2 border-white transition ${sel ? "h-[18px] w-[18px] bg-[#6D28D9]" : "h-3 w-3 bg-[#94A3B8] hover:scale-110 hover:bg-[#6D28D9]"}`} style={{ boxShadow: sel ? "0 0 0 4px rgba(124,58,237,.25)" : "0 1px 4px rgba(15,23,42,.3)" }} />
+                        {labelShown && <span className={`absolute left-1/2 top-[20px] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold ${sel ? "text-[#6D28D9]" : "text-slate-soft"}`}>Top {t.topPct}</span>}
+                        <span className="pointer-events-none absolute left-1/2 bottom-[calc(100%+8px)] z-[90] w-max -translate-x-1/2 rounded-lg bg-ink px-2.5 py-1.5 text-center opacity-0 shadow-[0_12px_28px_-8px_rgba(0,0,0,.6)] transition group-hover:opacity-100">
+                          <span className="block text-[12px] font-bold text-white">Top {t.topPct} %</span>
+                          <span className="block text-[11.5px] font-medium text-white/80">{showRef(t.netMonth, fmt)}{t.estimate ? " (est.)" : ""}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${Math.min(99, basePct)}%`, zIndex: 50 }}>
+                    <span className="block h-[16px] w-[16px] rounded-full border-[3px] border-white bg-[#00C389] shadow-[0_2px_8px_rgba(0,195,137,.8)]" />
+                    <span className="absolute left-1/2 -bottom-[19px] -translate-x-1/2 whitespace-nowrap text-[11px] font-bold text-[#0A8F60]">Vous</span>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-5 gap-1.5">
-                  {[50, 20, 10, 5, 1].map((tp) => (
-                    <button key={tp} type="button" onClick={() => setTarget(tp)}
-                      className={`rounded-xl border px-2 py-2.5 text-center text-[13px] font-bold transition ${target === tp ? "border-[#7C3AED] bg-[#7C3AED] text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,.8)]" : "border-line bg-white text-slate hover:border-[#C9B8F0] hover:text-ink"}`}>
-                      Top {tp} %
-                    </button>
-                  ))}
-                </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[50, 20, 10, 5, 1].map((tp) => (
+                  <button key={tp} type="button" onClick={() => setTarget(tp)}
+                    className={`rounded-xl border px-2 py-2.5 text-center text-[13px] font-bold transition ${target === tp ? "border-[#7C3AED] bg-[#7C3AED] text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,.8)]" : "border-line bg-white text-slate hover:-translate-y-px hover:border-[#C9B8F0] hover:text-ink"}`}>
+                    Top {tp} %
+                  </button>
+                ))}
+              </div>
 
-                <div key={target} className="cjv-drop mt-auto pt-5">
-                  {targetDelta > 0 ? (
-                    <>
-                      <p className="font-display text-[clamp(17px,2.2vw,21px)] font-bold leading-[1.25] text-ink">Pour le <span className="text-[#6D28D9]">top {target} %</span>, il faut <span className="text-[#6D28D9]">{showRef(targetRow.netMonth, fmt)}</span>{targetRow.estimate ? " (estimé)" : ""}.</p>
-                      <p className="mt-1 text-[14px] font-semibold text-slate">Il vous manque <b className="text-[#C0264A]">{showDelta(targetDelta, fmt)}</b> — soit ~{targetPctDiff} % de plus.</p>
-                    </>
-                  ) : (
-                    <p className="font-display text-[clamp(17px,2.2vw,21px)] font-bold leading-[1.25] text-ink">Vous êtes déjà dans le <span className="text-[#0A8F60]">top {target} %</span> 🎉<span className="mt-1 block text-[14px] font-semibold text-slate">Seuil : {showRef(targetRow.netMonth, fmt)}{targetRow.estimate ? " (estimé)" : ""}.</span></p>
-                  )}
-                </div>
+              <div key={target} className="cjv-drop mt-5 overflow-hidden rounded-2xl border border-[#E3DAFB] bg-gradient-to-br from-[#F7F4FE] to-white p-5">
+                {targetDelta > 0 ? (
+                  <>
+                    <p className="font-display text-[clamp(18px,2.5vw,23px)] font-bold leading-[1.25] text-ink">Pour atteindre le <span className="text-[#6D28D9]">top {target} %</span>, il vous faudrait <span className="text-[#6D28D9]">{showRef(targetRow.netMonth, fmt)}</span>{targetRow.estimate ? " (estimé)" : ""}.</p>
+                    <p className="mt-1.5 text-[14.5px] font-semibold text-slate">Il vous manque <b className="text-[#C0264A]">{showDelta(targetDelta, fmt)}</b> — soit ~{targetPctDiff} % de plus.</p>
+                  </>
+                ) : (
+                  <p className="font-display text-[clamp(18px,2.5vw,23px)] font-bold leading-[1.25] text-ink">Vous êtes déjà dans le <span className="text-[#0A8F60]">top {target} %</span> 🎉<span className="mt-1 block text-[14.5px] font-semibold text-slate">Seuil : {showRef(targetRow.netMonth, fmt)}{targetRow.estimate ? " (estimé)" : ""}.</span></p>
+                )}
               </div>
             </div>
           </section>
@@ -266,8 +267,6 @@ export function TopFrance() {
                 ) : (<>Faites glisser le curseur pour tester une augmentation et voir votre rang grimper.</>)}
               </p>
               <p className="mt-1 text-[13.5px] font-semibold text-slate">Salaire simulé : <b className="text-ink">{showRef(simNet, fmt)}</b> — vous dépasseriez {simMoins} % des salariés{raise >= 20 && baseTop - simTop > 0 ? ` (+${baseTop - simTop} points)` : ""}.</p>
-
-              {/* la SEULE échelle : curseur d'augmentation, avec une étiquette qui suit le point */}
               <div className="relative mt-9">
                 <div className="pointer-events-none absolute -top-7 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#6D28D9] px-2.5 py-1 text-[12px] font-bold text-white shadow-[0_8px_18px_-6px_rgba(124,58,237,.85)] transition-[left] duration-150 ease-out" style={{ left: `${raiseT / 10}%` }}>
                   +{showDelta(raise, fmt)}
@@ -279,7 +278,7 @@ export function TopFrance() {
             </div>
           </section>
 
-          {/* ====== Distribution — interactive (zoom + survol + 2e courbe cumulée), position réelle ====== */}
+          {/* ====== Distribution — zoom par sélection souris + marqueur « avec l'augmentation » ====== */}
           <section className="cjv-toolwrap">
             <div aria-hidden className="cjv-toolhalo" />
             <div className="rounded-[32px] border border-line bg-white/90 p-6 shadow-[0_40px_100px_-50px_rgba(5,9,24,.55)] backdrop-blur md:p-9">
@@ -288,52 +287,56 @@ export function TopFrance() {
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-brand-dark"><BarChart3 className="h-5 w-5" aria-hidden /></span>
                   <h3 className="font-display text-[clamp(20px,2.8vw,28px)] font-extrabold tracking-[-0.015em] text-ink">Votre place dans la distribution</h3>
                 </div>
-                <Seg<"all" | "me"> value={zoom} onChange={setZoom} size="sm" options={[{ v: "all", label: "Vue d’ensemble" }, { v: "me", label: "Autour de moi" }]} />
+                {customDomain && (
+                  <button type="button" onClick={() => setCustomDomain(null)} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-[12.5px] font-semibold text-slate transition hover:text-ink">
+                    <RotateCcw className="h-3.5 w-3.5" /> Réinitialiser le zoom
+                  </button>
+                )}
               </div>
               <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-slate">
                 <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm" style={{ background: "#7C3AED" }} /> gagnent moins que vous</span>
-                <span className="inline-flex items-center gap-1.5"><span className="h-0 w-4 border-t-2 border-dashed border-[#2F6BFF]" /> % cumulé qui gagnent moins</span>
-                <span className="hidden sm:inline">· survolez la courbe pour lire un salaire précis.</span>
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#00C389]" /> vous</span>
+                {raise >= 20 && <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#6D28D9]" /> avec l’augmentation</span>}
+                <span className="hidden sm:inline">· cliquez-glissez sur la courbe pour zoomer.</span>
               </p>
               <div className="mt-5 select-none">
                 {(() => {
-                  const W = 820, H = 264, baseY = 196, peak = 150;
-                  const dom = zoom === "me"
-                    ? [Math.max(900, baseNet * 0.5), Math.min(16000, Math.max(baseNet * 2.2, baseNet + 1500))]
-                    : [1200, 11000];
+                  const W = 820, H = 270, baseY = 198, peak = 150;
+                  const dom = customDomain ?? [1200, 11000];
                   const lnMin = Math.log(dom[0]), lnMax = Math.log(dom[1]);
                   const mu = Math.log(MEDIAN_NET_MONTH), sigma = Math.log(TOP10_NET_MONTH / MEDIAN_NET_MONTH) / 1.2816;
                   const clampV = (v: number) => Math.min(dom[1], Math.max(dom[0], v));
                   const xP = (v: number) => ((Math.log(clampV(v)) - lnMin) / (lnMax - lnMin)) * W;
                   const invX = (x: number) => Math.exp(lnMin + (Math.max(0, Math.min(W, x)) / W) * (lnMax - lnMin));
                   const dens = (lx: number) => Math.exp(-0.5 * ((lx - mu) / sigma) ** 2);
-                  const N = 80; const pts: { x: number; y: number }[] = [];
+                  const N = 84; const pts: { x: number; y: number }[] = [];
                   for (let i = 0; i <= N; i++) { const lx = lnMin + (lnMax - lnMin) * (i / N); pts.push({ x: (i / N) * W, y: baseY - peak * dens(lx) }); }
                   const curve = "M" + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ");
                   const area = `M0 ${baseY} L ` + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ") + ` L ${W} ${baseY} Z`;
-                  // 2e courbe : cumulée (CDF) — % qui gagnent moins
-                  const cdf: string[] = [];
-                  for (let i = 0; i <= N; i++) { const v = invX((i / N) * W); const p = percentileOfNetMonthly(v); cdf.push(`${((i / N) * W).toFixed(1)} ${(baseY - (p / 100) * peak).toFixed(1)}`); }
-                  const cdfLine = "M" + cdf.join(" L ");
                   const bxr = xP(baseNet); const byr = baseY - peak * dens(Math.log(clampV(baseNet)));
+                  const sxr = xP(simNet); const syr = baseY - peak * dens(Math.log(clampV(simNet)));
                   const leftPts = pts.filter((p) => p.x <= bxr);
                   const leftArea = `M0 ${baseY} L ` + leftPts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ") + ` L ${bxr.toFixed(1)} ${byr.toFixed(1)} L ${bxr.toFixed(1)} ${baseY} Z`;
                   const marks = [{ v: MEDIAN_NET_MONTH, l: "Médiane" }, { v: TOP10_NET_MONTH, l: "Top 10 %" }, { v: TOP1_NET_MONTH, l: "Top 1 %" }].filter((m) => m.v >= dom[0] && m.v <= dom[1]);
-                  const hv = hoverX != null ? invX(hoverX) : null; const hp = hv != null ? Math.min(99, Math.round(percentileOfNetMonthly(hv))) : 0;
+                  const showSim = raise >= 20 && Math.abs(sxr - bxr) > 6;
+                  const hv = hoverX != null && !drag ? invX(hoverX) : null; const hp = hv != null ? Math.min(99, Math.round(percentileOfNetMonthly(hv))) : 0;
                   const htx = hoverX != null ? Math.max(60, Math.min(W - 60, hoverX)) : 0;
+                  const xFrom = (e: ReactMouseEvent) => { const r = svgRef.current?.getBoundingClientRect(); if (!r) return 0; return Math.max(0, Math.min(W, ((e.clientX - r.left) / r.width) * W)); };
+                  const selA = drag ? Math.min(drag.x0, drag.x1) : 0; const selB = drag ? Math.max(drag.x0, drag.x1) : 0;
                   return (
                     <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="h-auto w-full min-w-[560px] cursor-crosshair md:min-w-0" preserveAspectRatio="xMidYMid meet"
-                      onMouseMove={(e) => { const r = svgRef.current?.getBoundingClientRect(); if (!r) return; setHoverX(((e.clientX - r.left) / r.width) * W); }}
-                      onMouseLeave={() => setHoverX(null)}>
+                      onMouseDown={(e) => { setHoverX(null); const x = xFrom(e); setDrag({ x0: x, x1: x }); }}
+                      onMouseMove={(e) => { const x = xFrom(e); if (drag) setDrag((d) => (d ? { ...d, x1: x } : null)); else setHoverX(x); }}
+                      onMouseUp={() => { if (drag) { const a = Math.min(drag.x0, drag.x1), b = Math.max(drag.x0, drag.x1); if (b - a > 22) { const lo = invX(a), hi = invX(b); setCustomDomain([Math.min(lo, hi), Math.max(lo, hi)]); } setDrag(null); } }}
+                      onMouseLeave={() => { setDrag(null); setHoverX(null); }}>
                       <defs>
-                        <linearGradient id="tfFull2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E6E9F2" stopOpacity="0.7" /><stop offset="1" stopColor="#E6E9F2" stopOpacity="0.1" /></linearGradient>
-                        <linearGradient id="tfLeft2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7C3AED" stopOpacity="0.55" /><stop offset="1" stopColor="#7C3AED" stopOpacity="0.08" /></linearGradient>
+                        <linearGradient id="tfF5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E6E9F2" stopOpacity="0.7" /><stop offset="1" stopColor="#E6E9F2" stopOpacity="0.1" /></linearGradient>
+                        <linearGradient id="tfL5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7C3AED" stopOpacity="0.55" /><stop offset="1" stopColor="#7C3AED" stopOpacity="0.08" /></linearGradient>
                       </defs>
-                      <path d={area} fill="url(#tfFull2)" />
-                      <path d={leftArea} fill="url(#tfLeft2)" />
+                      <path d={area} fill="url(#tfF5)" />
+                      <path d={leftArea} fill="url(#tfL5)" />
+                      {showSim && <rect x={Math.min(bxr, sxr)} y={28} width={Math.abs(sxr - bxr)} height={baseY - 28} fill="#6D28D9" fillOpacity="0.08" />}
                       <path d={curve} fill="none" stroke="#94A3B8" strokeWidth="2" />
-                      <path d={cdfLine} fill="none" stroke="#2F6BFF" strokeWidth="1.8" strokeDasharray="5 4" opacity="0.75" />
-                      <text x={W - 4} y={baseY - peak + 4} textAnchor="end" fontSize="10.5" fontWeight="700" fill="#2F6BFF">100 %</text>
                       <line x1="0" y1={baseY} x2={W} y2={baseY} stroke="#E6E9F2" strokeWidth="1" />
                       {marks.map((m) => { const x = xP(m.v); return (
                         <g key={m.l}>
@@ -341,11 +344,22 @@ export function TopFrance() {
                           <text x={x} y={baseY + 18} textAnchor="middle" fontSize="11" fontWeight="600" fill="#8A93A8">{m.l}</text>
                         </g>
                       ); })}
+                      {/* marqueur simulé (lié au module d'augmentation) */}
+                      {showSim && (<g>
+                        <line x1={sxr} y1={syr - 4} x2={sxr} y2={baseY} stroke="#6D28D9" strokeWidth="2" strokeDasharray="4 3" />
+                        <circle cx={sxr} cy={syr} r="6" fill="#6D28D9" stroke="#fff" strokeWidth="2.5" />
+                        <rect x={Math.min(W - 64, Math.max(0, sxr - 32))} y={Math.max(2, syr - 36)} width="64" height="22" rx="7" fill="#6D28D9" />
+                        <text x={Math.min(W - 32, Math.max(32, sxr))} y={Math.max(17, syr - 21)} textAnchor="middle" fontSize="11" fontWeight="800" fill="#fff">simulé</text>
+                      </g>)}
                       {/* utilisateur */}
                       <line x1={bxr} y1={byr - 4} x2={bxr} y2={baseY} stroke="#00A06E" strokeWidth="2.5" />
                       <circle cx={bxr} cy={byr} r="7" fill="#00C389" stroke="#fff" strokeWidth="3" />
-                      <rect x={Math.min(W - 80, Math.max(0, bxr - 40))} y={Math.max(2, byr - 38)} width="80" height="24" rx="8" fill="#00C389" />
-                      <text x={Math.min(W - 40, Math.max(40, bxr))} y={Math.max(18, byr - 22)} textAnchor="middle" fontSize="12" fontWeight="800" fill="#0F172A">Vous</text>
+                      <rect x={Math.min(W - 80, Math.max(0, bxr - 40))} y={Math.max(2, byr - 14)} width="80" height="24" rx="8" fill="#00C389" />
+                      <text x={Math.min(W - 40, Math.max(40, bxr))} y={Math.max(18, byr + 2)} textAnchor="middle" fontSize="12" fontWeight="800" fill="#0F172A">Vous</text>
+                      {/* sélection de zoom */}
+                      {drag && selB - selA > 2 && (<g>
+                        <rect x={selA} y={28} width={selB - selA} height={baseY - 28} fill="#2F6BFF" fillOpacity="0.12" stroke="#2F6BFF" strokeOpacity="0.5" strokeDasharray="4 3" />
+                      </g>)}
                       {/* survol précis */}
                       {hoverX != null && hv != null && (
                         <g>
@@ -359,11 +373,11 @@ export function TopFrance() {
                   );
                 })()}
               </div>
-              <p className="mt-3 text-[12px] text-slate-soft">Distribution des salaires nets mensuels (privé, équivalent temps plein). Source : INSEE {FR_YEAR}. Ce graphique reflète votre salaire réel, indépendamment du simulateur.</p>
+              <p className="mt-3 text-[12px] text-slate-soft">Le marqueur violet montre où l’augmentation simulée vous placerait. Cliquez-glissez pour zoomer sur une tranche, puis « Réinitialiser le zoom ». Source : INSEE {FR_YEAR}.</p>
             </div>
           </section>
 
-          {/* ====== Ce qu'il vous manque (position réelle) ====== */}
+          {/* ====== Ce qu'il vous manque — remplissage propre à CHAQUE seuil ====== */}
           {(() => {
             const refs = [{ l: "le salaire médian", verb: "dépasser", v: MEDIAN_NET_MONTH }, { l: "le salaire moyen", verb: "dépasser", v: MEAN_NET_MONTH }, { l: "le top 10 %", verb: "entrer dans", v: TOP10_NET_MONTH }, { l: "le top 5 %", verb: "entrer dans", v: TOP5_NET_MONTH_EST }, { l: "le top 1 %", verb: "entrer dans", v: TOP1_NET_MONTH }];
             const next = refs.filter((r) => r.v > baseNet).sort((a, b) => a.v - b.v).slice(0, 3);
@@ -376,12 +390,16 @@ export function TopFrance() {
                   <p className="mt-4 text-[16px] font-semibold text-ink">Vous êtes au sommet de la distribution des salaires français. 🎉</p>
                 ) : (
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    {next.map((r) => { const pctTo = Math.min(100, Math.round((baseNet / r.v) * 100)); return (
+                    {next.map((r) => { const pctTo = Math.max(3, Math.min(98, Math.round((baseNet / r.v) * 100))); return (
                       <div key={r.l} className="group rounded-2xl border border-[#E3DAFB] bg-white/85 p-4 transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(124,58,237,.5)]">
                         <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-[#6D28D9]">{r.l.replace("le ", "")}</span>
                         <span className="mt-1 block font-display text-[20px] font-extrabold text-ink">{showDelta(r.v - baseNet, fmt)}</span>
                         <span className="text-[13px] font-medium text-slate">pour {r.verb} {r.l}</span>
-                        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[#EEE7FD]"><div className="h-full rounded-full bg-gradient-to-r from-[#7C3AED] to-[#A855F7] transition-all duration-500" style={{ width: `${pctTo}%` }} /></div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#EEE7FD]"><div className="h-full rounded-full bg-gradient-to-r from-[#7C3AED] to-[#A855F7] transition-all duration-700" style={{ width: `${pctTo}%` }} /></div>
+                          <span className="shrink-0 text-[11.5px] font-bold text-[#6D28D9]">{pctTo} %</span>
+                        </div>
+                        <span className="mt-1 block text-[11px] font-medium text-slate-soft">du seuil déjà atteint</span>
                       </div>
                     ); })}
                   </div>

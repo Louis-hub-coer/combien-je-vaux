@@ -27,7 +27,7 @@ export default function SalaireHubPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
               <span className="relative h-2.5 w-2.5 rounded-full" style={{ background: "linear-gradient(90deg,#00C389,#7C3AED)", boxShadow: "0 0 8px rgba(0,195,137,.75)" }} />
             </span>
-            Univers salaire
+            Nos outils de salaire
           </span>
           <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
             Tous vos outils <span className="hl">salaire</span>

@@ -388,3 +388,7 @@
 @keyframes cjv-topnum-in { 0% { opacity: 0; transform: translateY(-0.22em); } 100% { opacity: 1; transform: translateY(0); } }
 .cjv-topnum { display: inline-block; min-width: 1.25em; text-align: center; animation: cjv-topnum-in .42s cubic-bezier(.22,1,.36,1); }
 @media (prefers-reduced-motion: reduce) { .cjv-topnum { animation: none; } }
+
+/* Titre top-france : odomètre vertical premium (roulette de chiffres, jamais vide) */
+.cjv-odo { display: inline-block; overflow: hidden; height: 1em; line-height: 1; vertical-align: -0.1em; }
+.cjv-odo-cell { height: 1em; line-height: 1; text-align: center; white-space: nowrap; }

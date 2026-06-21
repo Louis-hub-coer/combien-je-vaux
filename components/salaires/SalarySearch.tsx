@@ -197,12 +197,17 @@ export function SalarySearch() {
             e.preventDefault();
             runSearch(q);
           }}
-          className="flex items-center gap-3 rounded-[22px] border border-line bg-white py-3 pl-6 pr-3 shadow-[0_10px_22px_rgba(15,23,42,.07),0_46px_84px_-30px_rgba(124,58,237,.42)] transition focus-within:border-[#c7b6f2] focus-within:shadow-[0_12px_26px_rgba(15,23,42,.1),0_54px_96px_-30px_rgba(124,58,237,.55)]"
+          className="relative flex items-center gap-3 overflow-hidden rounded-[22px] border border-line bg-white py-3 pl-6 pr-3 shadow-[0_10px_22px_rgba(15,23,42,.07),0_46px_84px_-30px_rgba(124,58,237,.42)] transition focus-within:border-[#c7b6f2] focus-within:shadow-[0_12px_26px_rgba(15,23,42,.1),0_54px_96px_-30px_rgba(124,58,237,.55)]"
         >
+          {/* Effets repris de la barre homepage : ligne de scan + halo de loupe */}
+          <span aria-hidden className="cjv-scan" />
           {status === "loading" ? (
-            <Loader2 className="h-6 w-6 shrink-0 animate-spin text-brand" aria-hidden />
+            <Loader2 className="relative h-6 w-6 shrink-0 animate-spin text-brand" aria-hidden />
           ) : (
-            <Search className="h-6 w-6 shrink-0 text-slate" aria-hidden />
+            <span className="relative flex h-6 w-6 shrink-0 items-center justify-center">
+              <span aria-hidden className="cjv-iconglow" />
+              <Search className="relative h-6 w-6 text-slate" aria-hidden />
+            </span>
           )}
           <span className="relative flex min-w-0 flex-1 items-center overflow-hidden text-[17px]">
             <input

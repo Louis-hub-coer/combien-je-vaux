@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { SalarySearch } from "@/components/salaires/SalarySearch";
 import { SalairesAuraBackground } from "@/components/salaires/SalairesAuraBackground";
+import { HeroRotatingTitle } from "@/components/marketing/HeroRotatingTitle";
 
 export const metadata: Metadata = {
   title: "Rechercher un salaire",
@@ -68,7 +69,7 @@ export default function SalairesPage() {
           Accueil
         </Link>
 
-        <header className="mx-auto mt-6 max-w-[700px] text-center">
+        <header className="mx-auto mt-6 max-w-[820px] text-center">
           <span className="cjv-badge relative mb-3.5 inline-flex items-center gap-2.5 rounded-full border border-line/80 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.16em] text-slate backdrop-blur">
             <span aria-hidden className="cjv-badge-halo" />
             <span className="relative flex h-2.5 w-2.5 items-center justify-center">
@@ -78,14 +79,12 @@ export default function SalairesPage() {
                 style={{ background: "linear-gradient(90deg,#00C389,#7C3AED)", boxShadow: "0 0 8px rgba(0,195,137,.75)" }}
               />
             </span>
-            Moteur de salaires
+            Notre outil de recherche de salaire
           </span>
-          <h1 className="mx-auto max-w-[720px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
-            Rechercher <span className="hl">un salaire</span>
-          </h1>
+          <HeroRotatingTitle />
           <p className="mx-auto mt-5 max-w-[560px] text-balance text-[clamp(16px,2vw,19px)] leading-[1.55] text-slate">
-            Métiers, personnalités, secteurs : tapez une recherche et obtenez une
-            estimation claire, avec les résultats proches.
+            Tapez un nom ou un métier, découvrez le revenu estimé et comparez-vous en
+            quelques secondes.
           </p>
         </header>
 

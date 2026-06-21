@@ -39,7 +39,7 @@ export default function BrutNetPage() {
                 style={{ background: "linear-gradient(90deg,#00C389,#7C3AED)", boxShadow: "0 0 8px rgba(0,195,137,.75)" }}
               />
             </span>
-            Outil salaire
+            Notre outil de conversion de salaire
           </span>
           <h1 className="mx-auto max-w-[760px] text-balance text-[clamp(37px,5.4vw,62px)] font-extrabold leading-[1.05] tracking-[-0.032em] text-ink">
             <BrutNetTitleSwap />
